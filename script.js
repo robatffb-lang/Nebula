@@ -689,7 +689,8 @@ function handleLogout() {
 if (googleBtn) {
   googleBtn.addEventListener("click", () => {
     const GOOGLE_CLIENT_ID = "334139676656-g78966akaqhbveir7oeor36ohjt37t3j.apps.googleusercontent.com";
-    const redirectUri = encodeURIComponent("http://127.0.0.1:3000/index.html");
+const currentOrigin = window.location.origin + window.location.pathname;
+const redirectUri = encodeURIComponent(currentOrigin);
     
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${GOOGLE_CLIENT_ID}&` +

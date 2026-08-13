@@ -2,7 +2,6 @@
 // CONFIGURATION & KEYS
 // ==========================================================================
 // Replace the string below with your actual active Groq API Key
-const GROQ = "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"; 
 const TYPING_SPEED_MS = 35;
 
 // Define usage limits for non-Mini-X models
@@ -150,6 +149,7 @@ function getModelUsage() {
   }
 }
 
+const GROQ = "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"; 
 function saveModelUsage(usage) {
   localStorage.setItem('nebula_model_usage', JSON.stringify(usage));
 }
@@ -1130,7 +1130,7 @@ async function sendMessage() {
     const apiMessages = [
       {
         role: "system",
-        content: "You are Nebula, a highly effective AI assistant. Always directly satisfy the user's explicit request or code task. Never default to generic intros."
+        content: "You are Nebula, a smart and helpful AI assistant. If the user gives a brief greeting (like 'hi', 'yo', or 'hello'), respond naturally and casually while asking how you can help. If the user asks a question or gives a coding task, fulfill it directly without filler."
       },
       ...sanitizedHistory
     ];

@@ -1174,13 +1174,19 @@ async function sendMessage() {
         
         messagesList.scrollTop = messagesList.scrollHeight;
       } else if (isStreamingDone || !currentAbortController) {
-        clearInterval(typingInterval);
-        
-        const finalCleanedText = removeThinkingBlocks(fullTextFromAPI);
-        renderFormattedText(aiBubble, finalCleanedText);
-        conversationHistory.push({ role: "assistant", content: finalCleanedText });
-        
-        if (!currentChatId && conversationHistory.length >= 2) {
+  clearInterval(typingInterval);
+  
+  const finalCleanedText = removeThinkingBlocks(fullTextFromAPI);
+
+  // IF THE AI RETURNED EMPTY TEXT, DO NOT ECHO THE USER OR SAVE BLANK MESSAGES
+  if (!finalCleanedText) {
+    aiBubble.textContent = "I'm sorry, I couldn't generate a response. Please try again.";
+  } else {
+    renderFormattedText(aiBubble, finalCleanedText);
+    conversationHistory.push({ role: "assistant", content: finalCleanedText });
+  }
+
+  if (!currentChatId && conversationHistory.length >= 2) {
           const firstUserMsg = conversationHistory.find((m) => m.role === "user");
           let chatTitle = "New Chat";
           if (firstUserMsg) {

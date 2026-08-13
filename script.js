@@ -339,7 +339,8 @@ function notifyNebulaDev(eventType, userObj) {
     username: userObj.username,
     email: userObj.email || `${userObj.username}@nebula.ai`,
     timestamp: new Date().toLocaleString(),
-    origin: window.location.host || '1.0.0.127:3000'
+    // Find this inside notifyNebulaDev:
+origin: window.location.origin || 'https://robatffb-lang.github.io/Nebula'
   };
   
   devChannel.postMessage(payload);

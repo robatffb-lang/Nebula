@@ -1110,29 +1110,33 @@ async function sendMessage() {
 
   const aiBubble = appendMessage("nebula", "");
 
-  const activeModel = (currentFiles.length > 0)
-    ? "qwen/qwen3.6-27b"
-    : "llama-3.3-70b-versatile";
+  // 1. Pick a vision model if images are present
+  const hasImage = currentFiles.some(f => f.type.startsWith("image/"));
+  const activeModel = hasImage
+    ? "llama-3.2-11b-vision-instruct" // Use Groq's active vision model
+    : (currentModel === 'pro' ? 'llama-3.3-70b-versatile' : 'llama-3.3-70b-versatile');
 
   try {
+    // 2. Preserve image objects in sanitized history instead of filtering them out!
     const sanitizedHistory = conversationHistory.map((msg) => {
-      let cleanText = msg.content;
+      // If it's already an array (contains image_url + text), pass it directly
       if (Array.isArray(msg.content)) {
-        cleanText = msg.content
-          .filter((item) => item.type === "text")
-          .map((item) => item.text)
-          .join("\n");
+        return {
+          role: msg.role,
+          content: msg.content
+        };
       }
+      // Standard text message
       return {
         role: msg.role,
-        content: cleanText || "[User sent a media item]"
+        content: msg.content || ""
       };
     });
 
     const apiMessages = [
       {
         role: "system",
-        content: "You are Nebula, a smart and helpful AI assistant. If the user gives a brief greeting (like 'hi', 'yo', or 'hello'), respond naturally and casually while asking how you can help. If the user asks a question or gives a coding task, fulfill it directly without filler."
+        content: "You are Nebula, a helpful AI assistant capable of analyzing text and images directly. Answer questions accurately based on provided context or uploaded photos."
       },
       ...sanitizedHistory
     ];
@@ -1147,11 +1151,11 @@ async function sendMessage() {
       body: JSON.stringify({
         model: activeModel,
         messages: apiMessages,
-        temperature: 0.2,
+        temperature: 0.6,
         stream: true
       })
     });
-
+    
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData.error?.message || `HTTP ${response.status}: ${response.statusText}`);

@@ -1136,7 +1136,7 @@ async function sendMessage() {
     const apiMessages = [
       {
         role: "system",
-        content: "You are Nebula, a helpful AI assistant capable of analyzing text and images directly. Answer questions accurately based on provided context or uploaded photos.Be friendly with emojis."
+        content: "You are Nebula, a helpful AI assistant capable of analyzing text and images directly. Answer questions accurately based on provided context or uploaded photos.Be friendly replying with emojis."
       },
       ...sanitizedHistory
     ];

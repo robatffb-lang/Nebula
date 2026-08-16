@@ -1291,25 +1291,27 @@ if (isCompound) {
 }
 
     const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    
-    let fullTextFromAPI = "";
-    let currentDisplayedText = "";
-    let isStreamingDone = false;
+const decoder = new TextDecoder();
 
+let fullTextFromAPI = "";
+let currentDisplayedText = "";
+let isStreamingDone = false;
+    
     // Typing interval retains lock state until stream & typing animation finish
     const typingInterval = setInterval(() => {
-      if (currentDisplayedText.length < fullTextFromAPI.length) {
-        currentDisplayedText = fullTextFromAPI.slice(0, currentDisplayedText.length + 2);
-        
-        const cleanedText = removeThinkingBlocks(currentDisplayedText);
-        if (cleanedText) {
-          renderFormattedText(aiBubble, cleanedText);
-        }
-        
-        messagesList.scrollTop = messagesList.scrollHeight;
-      } else if (isStreamingDone || !currentAbortController) {
-  clearInterval(typingInterval);
+  if (currentDisplayedText.length < fullTextFromAPI.length) {
+    currentDisplayedText =
+      fullTextFromAPI.slice(0, currentDisplayedText.length + 2);
+
+    const cleanedText = removeThinkingBlocks(currentDisplayedText);
+
+    if (cleanedText) {
+      renderFormattedText(aiBubble, cleanedText);
+    }
+
+    messagesList.scrollTop = messagesList.scrollHeight;
+  }
+}, TYPING_SPEED_MS);
   
   const finalCleanedText = removeThinkingBlocks(fullTextFromAPI);
 

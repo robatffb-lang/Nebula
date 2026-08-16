@@ -1357,6 +1357,7 @@ let isStreamingDone = false;
         saveUserChats();
         currentAbortController = null;
         setGeneratingState(false);
+      }
     }, TYPING_SPEED_MS);
 
     while (true) {

@@ -1217,7 +1217,7 @@ Be friendly and use emojis when appropriate.
     const isCompound = activeModel === "groq/compound";
 
 const response = await fetch(
-  "https://nebula-backend.vercel.app//api/chat",
+  "https://nebula-backend.vercel.app/api/chat",
   {
     method: "POST",
     signal: currentAbortController.signal,

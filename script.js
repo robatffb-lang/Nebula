@@ -1753,3 +1753,39 @@ function clearAttachedFiles() {
     container.classList.add('hidden');
   }
 }
+
+// Function to fetch actual live air quality data
+async function getAirQuality(lat = 1.5533, lon = 110.3592) { // Default coords for Kuching
+  const API_KEY = '5812500a3812596369b161dd432502e1';
+  const url = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
+  
+  const res = await fetch(url);
+  const data = await res.json();
+
+  // Map OpenWeather index (1-5) to human readability
+  const aqiMap = { 1: "Good (API 0-50)", 2: "Moderate (API 51-100)", 3: "Unhealthy for Sensitive Groups", 4: "Unhealthy", 5: "Very Unhealthy" };
+  const aqiIndex = data.list[0].main.aqi;
+
+  return {
+    location: "Kuching, Sarawak",
+    aqi: aqiIndex,
+    status: aqiMap[aqiIndex] || "Unknown",
+    pm2_5: data.list[0].components.pm2_5,
+    timestamp: new Date().toISOString()
+  };
+}
+
+// Example using Google Gen AI SDK
+const tools = [{
+  functionDeclarations: [{
+    name: "getAirQuality",
+    description: "Fetches live Air Pollution Index (API) and air quality data for a location.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        location: { type: "STRING", description: "City name, e.g. Kuching" }
+      },
+      required: ["location"]
+    }
+  }]
+}];

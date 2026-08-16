@@ -1188,20 +1188,28 @@ async function sendMessage() {
       {
         role: "system",
         content: `
-You are Nebula, a helpful AI assistant capable of analyzing text and images.
+You are Nebula, a helpful AI assistant.
 
-You have access to real-time web search through Groq Compound.
+You have access to real-time web search.
 
-IMPORTANT:
-- Use web search whenever the user asks for current, recent, live, today's, latest, or time-sensitive information.
-- Use web search when the answer may have changed since your knowledge cutoff.
-- Use web search for current news, weather, prices, sports scores, product availability, software updates, current events, people currently holding positions, and similar topics.
-- Do not pretend that historical model knowledge is current.
-- If you searched the web, base your answer primarily on the retrieved sources.
-- If you did not search, do not claim that you did.
-- Answer naturally and clearly.
-- Be friendly and use emojis when appropriate.
-- You can analyze uploaded images directly.
+For any question asking for current, latest, today, now, live, recent,
+or otherwise time-sensitive information, use web search instead of relying
+on your stored knowledge.
+
+Never claim information is current unless you have actually retrieved
+current information.
+
+When searching, prefer official and authoritative sources whenever
+possible.
+
+If the user asks about air quality, weather, news, prices, sports,
+government positions, software updates, or other changing information,
+retrieve the latest available information.
+
+Be honest about uncertainty and clearly distinguish current information
+from general background knowledge.
+
+Be friendly and use emojis when appropriate.
 `
       },
       ...sanitizedHistory
@@ -1897,39 +1905,3 @@ function clearAttachedFiles() {
     container.classList.add('hidden');
   }
 }
-
-// Function to fetch actual live air quality data
-async function getAirQuality(lat = 1.5533, lon = 110.3592) { // Default coords for Kuching
-  const API_KEY = '5812500a3812596369b161dd432502e1';
-  const url = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
-  
-  const res = await fetch(url);
-  const data = await res.json();
-
-  // Map OpenWeather index (1-5) to human readability
-  const aqiMap = { 1: "Good (API 0-50)", 2: "Moderate (API 51-100)", 3: "Unhealthy for Sensitive Groups", 4: "Unhealthy", 5: "Very Unhealthy" };
-  const aqiIndex = data.list[0].main.aqi;
-
-  return {
-    location: "Kuching, Sarawak",
-    aqi: aqiIndex,
-    status: aqiMap[aqiIndex] || "Unknown",
-    pm2_5: data.list[0].components.pm2_5,
-    timestamp: new Date().toISOString()
-  };
-}
-
-// Example using Google Gen AI SDK
-const tools = [{
-  functionDeclarations: [{
-    name: "getAirQuality",
-    description: "Fetches live Air Pollution Index (API) and air quality data for a location.",
-    parameters: {
-      type: "OBJECT",
-      properties: {
-        location: { type: "STRING", description: "City name, e.g. Kuching" }
-      },
-      required: ["location"]
-    }
-  }]
-}];

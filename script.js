@@ -1217,38 +1217,16 @@ Be friendly and use emojis when appropriate.
     const isCompound = activeModel === "groq/compound";
 
 const response = await fetch(
-  "https://api.groq.com/openai/v1/chat/completions",
+  "https://nebula-backend.vercel.app//api/chat",
   {
     method: "POST",
     signal: currentAbortController.signal,
     headers: {
-      "Authorization": `Bearer ${GROQ}`,
-      "Content-Type": "application/json",
-      "Groq-Model-Version": "latest"
+      "Content-Type": "application/json"
     },
-    body: JSON.stringify(
-      isCompound
-        ? {
-            model: "groq/compound",
-            messages: apiMessages,
-
-            // Let Compound use real-time web search and website visiting.
-            compound_custom: {
-              tools: {
-                enabled_tools: [
-                  "web_search",
-                  "visit_website"
-                ]
-              }
-            }
-          }
-        : {
-            model: activeModel,
-            messages: apiMessages,
-            temperature: 0.6,
-            stream: true
-          }
-    )
+    body: JSON.stringify({
+      messages: apiMessages
+    })
   }
 );
     

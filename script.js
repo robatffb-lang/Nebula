@@ -1115,15 +1115,18 @@ async function sendMessage() {
 
   if (welcomeScreen) welcomeScreen.style.display = "none";
 
-  if (typeof window.consumeModelUsage === 'function') {
+  if (typeof window.consumeModelUsage === "function") {
     const allowed = window.consumeModelUsage(currentModel);
+
     if (!allowed) {
       alert(`Limit reached for ${currentModel.toUpperCase()}. Defaulting to Mini-X.`);
+      selectModel("mini-x");
       return;
     }
   }
 
   const currentFiles = [...attachedFiles];
+
   appendMessage("user", prompt, currentFiles);
 
   let userContent = [];
@@ -1132,265 +1135,179 @@ async function sendMessage() {
     for (const file of currentFiles) {
       if (file.type.startsWith("image/")) {
         const base64Image = await fileToBase64(file);
+
         userContent.push({
           type: "image_url",
-          image_url: { url: base64Image }
+          image_url: {
+            url: base64Image
+          }
         });
       }
     }
   }
 
   if (prompt) {
-    userContent.push({ type: "text", text: prompt });
+    userContent.push({
+      type: "text",
+      text: prompt
+    });
   }
 
-  const apiPayload = (userContent.length === 1 && userContent[0].type === "text")
-    ? prompt
-    : userContent;
+  const apiPayload =
+    userContent.length === 1 && userContent[0].type === "text"
+      ? prompt
+      : userContent;
 
-  conversationHistory.push({ role: "user", content: apiPayload });
+  conversationHistory.push({
+    role: "user",
+    content: apiPayload
+  });
 
   userInput.value = "";
   userInput.style.height = "auto";
   clearAttachedFiles();
 
-  // Initialize Abort Controller & Lock Input Box completely
   currentAbortController = new AbortController();
   setGeneratingState(true);
 
   const aiBubble = appendMessage("nebula", "");
 
-  // 1. Pick a vision model if images are present
-  const hasImage = currentFiles.some(f => f.type.startsWith("image/"));
+  const hasImage = currentFiles.some(file =>
+    file.type.startsWith("image/")
+  );
+
   const activeModel = hasImage
-  ? "llama-3.2-11b-vision-instruct"
-  : "groq/compound";
+    ? "llama-3.2-11b-vision-instruct"
+    : "groq/compound";
 
   try {
-    // 2. Preserve image objects in sanitized history instead of filtering them out!
-    const sanitizedHistory = conversationHistory.map((msg) => {
-      // If it's already an array (contains image_url + text), pass it directly
-      if (Array.isArray(msg.content)) {
-        return {
-          role: msg.role,
-          content: msg.content
-        };
-      }
-      // Standard text message
-      return {
-        role: msg.role,
-        content: msg.content || ""
-      };
-    });
+    const sanitizedHistory = conversationHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content || ""
+    }));
 
     const apiMessages = [
       {
         role: "system",
-        content: `
-You are Nebula, a helpful AI assistant.
-
-You have access to real-time web search.
-
-For any question asking for current, latest, today, now, live, recent,
-or otherwise time-sensitive information, use web search instead of relying
-on your stored knowledge.
-
-Never claim information is current unless you have actually retrieved
-current information.
-
-When searching, prefer official and authoritative sources whenever
-possible.
-
-If the user asks about air quality, weather, news, prices, sports,
-government positions, software updates, or other changing information,
-retrieve the latest available information.
-
-Be honest about uncertainty and clearly distinguish current information
-from general background knowledge.
-
-Be friendly and use emojis when appropriate.
-`
+        content:
+          "You are Nebula, a helpful AI assistant capable of analyzing text and images directly. Answer accurately and be friendly. Use emojis when appropriate."
       },
       ...sanitizedHistory
     ];
 
-    const isCompound = activeModel === "groq/compound";
+    const response = await fetch(
+      "https://nebula-backend.vercel.app/api/chat",
+      {
+        method: "POST",
+        signal: currentAbortController.signal,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messages: apiMessages
+        })
+      }
+    );
 
-const response = await fetch(
-  "https://nebula-backend.vercel.app/api/chat",
-  {
-    method: "POST",
-    signal: currentAbortController.signal,
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      messages: apiMessages
-    })
-  }
-);
-    
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+
+      throw new Error(
+        errData.error?.message ||
+        errData.error ||
+        `HTTP ${response.status}: ${response.statusText}`
+      );
     }
 
-    // ============================================================
-// GROQ COMPOUND: NON-STREAMING WEB SEARCH RESPONSE
-// ============================================================
-if (isCompound) {
-  const data = await response.json();
+    const data = await response.json();
 
-  const resultText =
-    data.choices?.[0]?.message?.content || "";
+    const assistantText =
+      data.choices?.[0]?.message?.content || "";
 
-  fullTextFromAPI = resultText;
-  isStreamingDone = true;
+    const finalText = removeThinkingBlocks(assistantText);
 
-  // Animate the complete web-researched answer
-  let currentDisplayedText = "";
+    if (!finalText) {
+      aiBubble.textContent =
+        "I'm sorry, I couldn't generate a response. Please try again.";
+    } else {
+      renderFormattedText(aiBubble, finalText);
 
-  const typingInterval = setInterval(() => {
-    if (currentDisplayedText.length < fullTextFromAPI.length) {
-      currentDisplayedText = fullTextFromAPI.slice(
-        0,
-        currentDisplayedText.length + 2
+      conversationHistory.push({
+        role: "assistant",
+        content: finalText
+      });
+    }
+
+    if (!currentChatId && conversationHistory.length >= 2) {
+      const firstUserMsg = conversationHistory.find(
+        msg => msg.role === "user"
       );
 
-      const cleanedText = removeThinkingBlocks(currentDisplayedText);
+      let chatTitle = "New Chat";
 
-      if (cleanedText) {
-        renderFormattedText(aiBubble, cleanedText);
+      if (firstUserMsg) {
+        if (typeof firstUserMsg.content === "string") {
+          chatTitle = firstUserMsg.content;
+        } else if (Array.isArray(firstUserMsg.content)) {
+          const textObj = firstUserMsg.content.find(
+            c => c.type === "text"
+          );
+
+          chatTitle = textObj
+            ? textObj.text
+            : "Image Analysis Chat";
+        }
       }
 
-      messagesList.scrollTop = messagesList.scrollHeight;
-    } else {
-      clearInterval(typingInterval);
+      currentChatId = "chat_" + Date.now();
 
-      const finalCleanedText =
-        removeThinkingBlocks(fullTextFromAPI);
+      allSavedChats.push({
+        id: currentChatId,
+        title: chatTitle,
+        history: [...conversationHistory]
+      });
 
-      if (!finalCleanedText) {
-        aiBubble.textContent =
-          "I'm sorry, I couldn't generate a response. Please try again.";
-      } else {
-        renderFormattedText(aiBubble, finalCleanedText);
+      if (historyList) {
+        const li = createHistoryListItem(
+          currentChatId,
+          chatTitle
+        );
+
+        li.classList.add("active");
+        historyList.appendChild(li);
+      }
+    } else if (currentChatId) {
+      const currentChatObj = allSavedChats.find(
+        chat => chat.id === currentChatId
+      );
+
+      if (currentChatObj) {
+        currentChatObj.history = [...conversationHistory];
+      }
+    }
+
+    saveUserChats();
+
+  } catch (err) {
+
+    if (err.name === "AbortError") {
+      const stoppedText = removeThinkingBlocks(
+        aiBubble.textContent || ""
+      );
+
+      if (stoppedText) {
         conversationHistory.push({
           role: "assistant",
-          content: finalCleanedText
+          content: stoppedText
         });
       }
 
-      saveCurrentChat();
-      currentAbortController = null;
-      setGeneratingState(false);
-    }
-  }, TYPING_SPEED_MS);
-
-  return;
-}
-
-    const reader = response.body.getReader();
-const decoder = new TextDecoder();
-
-let fullTextFromAPI = "";
-let currentDisplayedText = "";
-let isStreamingDone = false;
-    
-    // Typing interval retains lock state until stream & typing animation finish
-    const typingInterval = setInterval(() => {
-  if (currentDisplayedText.length < fullTextFromAPI.length) {
-    currentDisplayedText =
-      fullTextFromAPI.slice(0, currentDisplayedText.length + 2);
-
-    const cleanedText = removeThinkingBlocks(currentDisplayedText);
-
-    if (cleanedText) {
-      renderFormattedText(aiBubble, cleanedText);
-    }
-
-    messagesList.scrollTop = messagesList.scrollHeight;
-  }
-}, TYPING_SPEED_MS);
-  
-  const finalCleanedText = removeThinkingBlocks(fullTextFromAPI);
-
-  // IF THE AI RETURNED EMPTY TEXT, DO NOT ECHO THE USER OR SAVE BLANK MESSAGES
-  if (!finalCleanedText) {
-    aiBubble.textContent = "I'm sorry, I couldn't generate a response. Please try again.";
-  } else {
-    renderFormattedText(aiBubble, finalCleanedText);
-    conversationHistory.push({ role: "assistant", content: finalCleanedText });
-  }
-
-  if (!currentChatId && conversationHistory.length >= 2) {
-          const firstUserMsg = conversationHistory.find((m) => m.role === "user");
-          let chatTitle = "New Chat";
-          if (firstUserMsg) {
-            if (typeof firstUserMsg.content === "string") {
-              chatTitle = firstUserMsg.content;
-            } else if (Array.isArray(firstUserMsg.content)) {
-              const textObj = firstUserMsg.content.find(c => c.type === "text");
-              chatTitle = textObj ? textObj.text : "Image Analysis Chat";
-            }
-          }
-          currentChatId = "chat_" + Date.now();
-          
-          allSavedChats.push({
-            id: currentChatId,
-            title: chatTitle,
-            history: [...conversationHistory]
-          });
-
-          if (historyList) {
-            const li = createHistoryListItem(currentChatId, chatTitle);
-            li.classList.add("active");
-            historyList.appendChild(li);
-          }
-        } else if (currentChatId) {
-          const currentChatObj = allSavedChats.find(c => c.id === currentChatId);
-          if (currentChatObj) {
-            currentChatObj.history = [...conversationHistory];
-          }
-        }
-
-        saveUserChats();
-        currentAbortController = null;
-        setGeneratingState(false);
-      }
-    }, TYPING_SPEED_MS);
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        isStreamingDone = true;
-        break;
-      }
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split("\n");
-
-      for (const line of lines) {
-        if (line.startsWith("data: ") && line !== "data: [DONE]") {
-          try {
-            const data = JSON.parse(line.substring(6));
-            const delta = data.choices[0]?.delta?.content || "";
-            fullTextFromAPI += delta;
-          } catch (e) {}
-        }
-      }
-    }
-
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      const stoppedText = removeThinkingBlocks(aiBubble.textContent || "");
-      if (stoppedText) {
-        conversationHistory.push({ role: "assistant", content: stoppedText });
-      }
     } else {
       console.error("API Request Error:", err);
       aiBubble.textContent = `Error: ${err.message}`;
     }
+
+  } finally {
     currentAbortController = null;
     setGeneratingState(false);
   }

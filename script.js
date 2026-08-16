@@ -1056,6 +1056,57 @@ function setGeneratingState(isGenerating) {
   }
 }
 
+function saveCurrentChat() {
+  if (!currentAccountId) return;
+
+  if (!currentChatId && conversationHistory.length >= 2) {
+    const firstUserMsg =
+      conversationHistory.find(m => m.role === "user");
+
+    let chatTitle = "New Chat";
+
+    if (firstUserMsg) {
+      if (typeof firstUserMsg.content === "string") {
+        chatTitle = firstUserMsg.content;
+      } else if (Array.isArray(firstUserMsg.content)) {
+        const textObj =
+          firstUserMsg.content.find(c => c.type === "text");
+
+        chatTitle = textObj
+          ? textObj.text
+          : "Image Analysis Chat";
+      }
+    }
+
+    currentChatId = "chat_" + Date.now();
+
+    allSavedChats.push({
+      id: currentChatId,
+      title: chatTitle,
+      history: [...conversationHistory]
+    });
+
+    if (historyList) {
+      const li = createHistoryListItem(
+        currentChatId,
+        chatTitle
+      );
+
+      li.classList.add("active");
+      historyList.appendChild(li);
+    }
+  } else if (currentChatId) {
+    const currentChatObj =
+      allSavedChats.find(c => c.id === currentChatId);
+
+    if (currentChatObj) {
+      currentChatObj.history = [...conversationHistory];
+    }
+  }
+
+  saveUserChats();
+}
+
 // ----------------------------------------------------
 // CHAT MESSAGING LOGIC
 // ----------------------------------------------------
@@ -1113,8 +1164,8 @@ async function sendMessage() {
   // 1. Pick a vision model if images are present
   const hasImage = currentFiles.some(f => f.type.startsWith("image/"));
   const activeModel = hasImage
-    ? "llama-3.2-11b-vision-instruct" // Use Groq's active vision model
-    : (currentModel === 'pro' ? 'llama-3.3-70b-versatile' : 'llama-3.3-70b-versatile');
+  ? "llama-3.2-11b-vision-instruct"
+  : "groq/compound";
 
   try {
     // 2. Preserve image objects in sanitized history instead of filtering them out!
@@ -1136,30 +1187,123 @@ async function sendMessage() {
     const apiMessages = [
       {
         role: "system",
-        content: "You are Nebula, a helpful AI assistant capable of analyzing text and images directly. Answer questions accurately based on provided context or uploaded photos.Be friendly replying with emojis."
+        content: `
+You are Nebula, a helpful AI assistant capable of analyzing text and images.
+
+You have access to real-time web search through Groq Compound.
+
+IMPORTANT:
+- Use web search whenever the user asks for current, recent, live, today's, latest, or time-sensitive information.
+- Use web search when the answer may have changed since your knowledge cutoff.
+- Use web search for current news, weather, prices, sports scores, product availability, software updates, current events, people currently holding positions, and similar topics.
+- Do not pretend that historical model knowledge is current.
+- If you searched the web, base your answer primarily on the retrieved sources.
+- If you did not search, do not claim that you did.
+- Answer naturally and clearly.
+- Be friendly and use emojis when appropriate.
+- You can analyze uploaded images directly.
+`
       },
       ...sanitizedHistory
     ];
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      signal: currentAbortController.signal,
-      headers: {
-        "Authorization": `Bearer ${GROQ}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: activeModel,
-        messages: apiMessages,
-        temperature: 0.6,
-        stream: true
-      })
-    });
+    const isCompound = activeModel === "groq/compound";
+
+const response = await fetch(
+  "https://api.groq.com/openai/v1/chat/completions",
+  {
+    method: "POST",
+    signal: currentAbortController.signal,
+    headers: {
+      "Authorization": `Bearer ${GROQ}`,
+      "Content-Type": "application/json",
+      "Groq-Model-Version": "latest"
+    },
+    body: JSON.stringify(
+      isCompound
+        ? {
+            model: "groq/compound",
+            messages: apiMessages,
+
+            // Let Compound use real-time web search and website visiting.
+            compound_custom: {
+              tools: {
+                enabled_tools: [
+                  "web_search",
+                  "visit_website"
+                ]
+              }
+            }
+          }
+        : {
+            model: activeModel,
+            messages: apiMessages,
+            temperature: 0.6,
+            stream: true
+          }
+    )
+  }
+);
     
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
     }
+
+    // ============================================================
+// GROQ COMPOUND: NON-STREAMING WEB SEARCH RESPONSE
+// ============================================================
+if (isCompound) {
+  const data = await response.json();
+
+  const resultText =
+    data.choices?.[0]?.message?.content || "";
+
+  fullTextFromAPI = resultText;
+  isStreamingDone = true;
+
+  // Animate the complete web-researched answer
+  let currentDisplayedText = "";
+
+  const typingInterval = setInterval(() => {
+    if (currentDisplayedText.length < fullTextFromAPI.length) {
+      currentDisplayedText = fullTextFromAPI.slice(
+        0,
+        currentDisplayedText.length + 2
+      );
+
+      const cleanedText = removeThinkingBlocks(currentDisplayedText);
+
+      if (cleanedText) {
+        renderFormattedText(aiBubble, cleanedText);
+      }
+
+      messagesList.scrollTop = messagesList.scrollHeight;
+    } else {
+      clearInterval(typingInterval);
+
+      const finalCleanedText =
+        removeThinkingBlocks(fullTextFromAPI);
+
+      if (!finalCleanedText) {
+        aiBubble.textContent =
+          "I'm sorry, I couldn't generate a response. Please try again.";
+      } else {
+        renderFormattedText(aiBubble, finalCleanedText);
+        conversationHistory.push({
+          role: "assistant",
+          content: finalCleanedText
+        });
+      }
+
+      saveCurrentChat();
+      currentAbortController = null;
+      setGeneratingState(false);
+    }
+  }, TYPING_SPEED_MS);
+
+  return;
+}
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();

@@ -1216,6 +1216,9 @@ Be friendly and use emojis when appropriate.
 
     const isCompound = activeModel === "groq/compound";
 
+console.log("GROQ_API_KEY exists:", !!process.env.GROQ_API_KEY);
+console.log("GROQ_API_KEY length:", process.env.GROQ_API_KEY?.length);
+
 const response = await fetch(
   "https://nebula-backend.vercel.app/api/chat",
   {

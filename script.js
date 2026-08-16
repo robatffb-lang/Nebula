@@ -149,7 +149,6 @@ function getModelUsage() {
   }
 }
 
-const GROQ = "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"; 
 function saveModelUsage(usage) {
   localStorage.setItem('nebula_model_usage', JSON.stringify(usage));
 }

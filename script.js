@@ -1177,10 +1177,24 @@ async function sendMessage() {
  const activeModel = currentModel;
 
   try {
-    const sanitizedHistory = conversationHistory.map(msg => ({
+    const sanitizedHistory = conversationHistory.map(msg => {
+  if (Array.isArray(msg.content)) {
+    const textParts = msg.content
+      .filter(part => part.type === "text")
+      .map(part => part.text)
+      .join("\n");
+
+    return {
       role: msg.role,
-      content: msg.content || ""
-    }));
+      content: textParts || "[Image attached]"
+    };
+  }
+
+  return {
+    role: msg.role,
+    content: String(msg.content || "")
+  };
+});
 
     const apiMessages = [
       {

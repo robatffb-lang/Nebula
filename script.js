@@ -402,122 +402,23 @@ if (inputEl && caretEl) {
   });
 }
 
-const translations = {
-  en: {
-    welcomeSub: "Your personal, professional AI assistant.",
-    inputPlaceholder: "Message Nebula...",
-    newChat: "New chat",
-    chatHistory: "Chat History",
-    signUp: "Sign Up",
-    disclaimer: "Nebula is an AI assistant, its reply may not be fully correct.",
-    loadingEngine: "Loading AI Engine...",
-    startingLoad: "Engine Ready",
-    card1Title: "Write code",
-    card1Desc: "Sort an array of objects in JS",
-    card2Title: "Explain concepts",
-    card2Desc: "Quantum computing for beginners",
-    card3Title: "Creative writing",
-    card3Desc: "Brainstorm a sci-fi storyline"
-  },
-  zh: {
-    welcomeSub: "你的个人且专业的AI助手。",
-    inputPlaceholder: "给 Nebula 发送消息...",
-    newChat: "新建对话",
-    chatHistory: "历史对话",
-    signUp: "注册 / 登录",
-    disclaimer: "Nebula 是一个 AI 助手，其回复可能不完全准确。",
-    loadingEngine: "AI 引擎准备好了",
-    startingLoad: "AI 引擎准备好了",
-    card1Title: "编写代码",
-    card1Desc: "在 JS 中对对象数组进行排序",
-    card2Title: "解释概念",
-    card2Desc: "适合初学者的量子计算",
-    card3Title: "创意写作",
-    card3Desc: "构思科幻故事构架"
-  },
-  es: {
-    welcomeSub: "Tu asistente de IA personal y profesional.",
-    inputPlaceholder: "Enviar mensaje a Nebula...",
-    newChat: "Nuevo chat",
-    chatHistory: "Historial de chat",
-    signUp: "Registrarse",
-    disclaimer: "Nebula es un asistente de IA, sus respuestas pueden no ser del todo correctas.",
-    loadingEngine: "Motor listo",
-    startingLoad: "Motor listo",
-    card1Title: "Escribir código",
-    card1Desc: "Ordenar un arreglo de objetos en JS",
-    card2Title: "Explicar conceptos",
-    card2Desc: "Computación cuántica para principiantes",
-    card3Title: "Escritura creativa",
-    card3Desc: "Lluvia de ideas para una historia sci-fi"
-  },
-  ms: {
-    welcomeSub: "Pembantu AI peribadi dan profesional anda.",
-    inputPlaceholder: "Mesej Nebula...",
-    newChat: "Sembang Baharu",
-    chatHistory: "Sejarah Sembang",
-    signUp: "Daftar",
-    disclaimer: "Nebula ialah pembantu AI, jawapannya mungkin tidak tepat sepenuhnya.",
-    loadingEngine: "Sedia Enjin",
-    startingLoad: "Sedia Enjin",
-    card1Title: "Tulis kod",
-    card1Desc: "Susun tatasusunan objek dalam JS",
-    card2Title: "Terangkan konsep",
-    card2Desc: "Pengkomputeran kuantum untuk pemula",
-    card3Title: "Penulisan kreatif",
-    card3Desc: "Sumbang saran cerita rekaan sains"
-  }
-};
+const userLanguage = navigator.language.toLowerCase();
 
-function updateUILanguage(lang) {
-  const dict = translations[lang] || translations.en;
+let currentLanguage;
 
-  const loadingLabel = document.getElementById("loading-label");
-  if (loadingLabel) loadingLabel.textContent = dict.loadingEngine;
-
-  const statusText = document.getElementById("status-text");
-  if (statusText) statusText.textContent = dict.startingLoad;
-
-  const newChatBtn = document.getElementById("new-chat-btn");
-  const newChatSpan = newChatBtn ? newChatBtn.querySelector("span") : null;
-  if (newChatSpan) newChatSpan.textContent = dict.newChat;
-
-  const historyLabel = document.querySelector(".history-label");
-  if (historyLabel) historyLabel.textContent = dict.chatHistory;
-
-  const userDisplayLabel = document.getElementById("user-display-label");
-  if (userDisplayLabel && !isUserLoggedIn && userDisplayLabel.textContent === "Sign Up") {
-    userDisplayLabel.textContent = dict.signUp;
-  }
-
-  const welcomeSubtext = document.getElementById("welcome-subtext");
-  if (welcomeSubtext) welcomeSubtext.textContent = dict.welcomeSub;
-
-  const cards = document.querySelectorAll(".suggestions-grid .card");
-  if (cards.length >= 3) {
-    cards[0].querySelector("h4").textContent = dict.card1Title;
-    cards[0].querySelector("p").textContent = dict.card1Desc;
-
-    cards[1].querySelector("h4").textContent = dict.card2Title;
-    cards[1].querySelector("p").textContent = dict.card2Desc;
-
-    cards[2].querySelector("h4").textContent = dict.card3Title;
-    cards[2].querySelector("p").textContent = dict.card3Desc;
-  }
-
-  const userInput = document.getElementById("user-input");
-  if (userInput) userInput.placeholder = dict.inputPlaceholder;
-
-  const disclaimer = document.querySelector(".disclaimer");
-  if (disclaimer) disclaimer.textContent = dict.disclaimer;
+if (userLanguage.startsWith("zh")) {
+  currentLanguage = "zh";
+} else if (userLanguage.startsWith("ms")) {
+  currentLanguage = "ms";
+} else if (userLanguage.startsWith("ja")) {
+  currentLanguage = "ja";
+} else if (userLanguage.startsWith("ko")) {
+  currentLanguage = "ko";
+} else {
+  currentLanguage = "en";
 }
 
-window.usePrompt = (text) => {
-  if (!userInput || currentAbortController) return;
-  userInput.value = text;
-  userInput.focus();
-  sendBtn.disabled = false;
-};
+const t = translations[currentLanguage] || translations.en;
 
 function initializeEngine() {
   if (statusDot) statusDot.className = "status-dot ready";

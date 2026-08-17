@@ -1219,17 +1219,18 @@ async function sendMessage() {
     const reader = response.body.getReader();
 const decoder = new TextDecoder();
 
+let buffer = "";
 let assistantText = "";
-let displayText = "";
 
 while (true) {
   const { done, value } = await reader.read();
 
   if (done) break;
 
-  const chunk = decoder.decode(value, { stream: true });
+  buffer += decoder.decode(value, { stream: true });
 
-  const lines = chunk.split("\n");
+  const lines = buffer.split("\n");
+  buffer = lines.pop() || "";
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -1254,14 +1255,14 @@ while (true) {
 
       assistantText += token;
 
-      // Remove any thinking blocks before displaying.
-      displayText = removeThinkingBlocks(assistantText);
+      const visibleText =
+        removeThinkingBlocks(assistantText);
 
-      renderFormattedText(aiBubble, displayText);
+      renderFormattedText(aiBubble, visibleText);
 
-      messagesList.scrollTop = messagesList.scrollHeight;
+      messagesList.scrollTop =
+        messagesList.scrollHeight;
 
-      // Small delay so the response visibly types.
       if (TYPING_SPEED_MS > 0) {
         await new Promise(resolve =>
           setTimeout(resolve, TYPING_SPEED_MS)
@@ -1269,7 +1270,7 @@ while (true) {
       }
 
     } catch (parseError) {
-      // Ignore incomplete SSE chunks.
+      console.warn("Stream parsing error:", parseError);
     }
   }
 }

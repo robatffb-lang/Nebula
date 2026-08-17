@@ -1204,7 +1204,8 @@ async function sendMessage() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          messages: apiMessages
+          messages: apiMessages,
+          model: currentModel
         })
       }
     );

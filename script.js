@@ -1522,7 +1522,7 @@ function appendMessage(sender, text, files = []) {
       avatar.textContent = userData.displayName ? userData.displayName.charAt(0).toUpperCase() : "ME";
     }
   } else {
-  avatar.innerHTML = `<img src="logo1.jpg" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
+  avatar.innerHTML = `<img src="./logo1.jpg" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
   }
 
   const bubble = document.createElement("div");

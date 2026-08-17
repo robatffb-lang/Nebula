@@ -1109,29 +1109,45 @@ function saveCurrentChat() {
 // ----------------------------------------------------
 async function sendMessage() {
   const prompt = userInput.value.trim();
+
   if (!prompt && attachedFiles.length === 0) return;
 
-  if (welcomeScreen) welcomeScreen.style.display = "none";
+  if (welcomeScreen) {
+    welcomeScreen.style.display = "none";
+  }
 
+  // Check model usage
   if (typeof window.consumeModelUsage === "function") {
     const allowed = window.consumeModelUsage(currentModel);
 
     if (!allowed) {
-      alert(`Limit reached for ${currentModel.toUpperCase()}. Defaulting to Mini-X.`);
+      alert(
+        `Limit reached for ${currentModel.toUpperCase()}. Defaulting to Mini-X.`
+      );
+
       selectModel("mini-x");
       return;
     }
   }
 
+  // IMPORTANT:
+  // Freeze the model BEFORE doing async work.
+  const activeModel = currentModel;
+
   const currentFiles = [...attachedFiles];
 
+  // Show user's message immediately
   appendMessage("user", prompt, currentFiles);
 
-  let userContent = [];
+  // ----------------------------------------------------
+  // BUILD USER CONTENT
+  // ----------------------------------------------------
 
-  if (currentFiles.length > 0) {
-    for (const file of currentFiles) {
-      if (file.type.startsWith("image/")) {
+  const userContent = [];
+
+  for (const file of currentFiles) {
+    if (file.type.startsWith("image/")) {
+      try {
         const base64Image = await fileToBase64(file);
 
         userContent.push({
@@ -1140,6 +1156,15 @@ async function sendMessage() {
             url: base64Image
           }
         });
+      } catch (error) {
+        console.error("Image conversion failed:", error);
+
+        const aiBubble = appendMessage(
+          "nebula",
+          "I couldn't process that image."
+        );
+
+        return;
       }
     }
   }
@@ -1151,9 +1176,12 @@ async function sendMessage() {
     });
   }
 
+  // If only text was sent, keep normal string format.
+  // If an image is included, KEEP THE ARRAY.
   const apiPayload =
-    userContent.length === 1 && userContent[0].type === "text"
-      ? prompt
+    userContent.length === 1 &&
+    userContent[0].type === "text"
+      ? userContent[0].text
       : userContent;
 
   conversationHistory.push({
@@ -1161,40 +1189,34 @@ async function sendMessage() {
     content: apiPayload
   });
 
+  // Clear input
   userInput.value = "";
   userInput.style.height = "auto";
   clearAttachedFiles();
 
+  // Start generation
   currentAbortController = new AbortController();
   setGeneratingState(true);
 
   const aiBubble = appendMessage("nebula", "");
 
-  const hasImage = currentFiles.some(file =>
-    file.type.startsWith("image/")
-  );
+  // ----------------------------------------------------
+  // CHECK WHETHER THIS CONVERSATION CONTAINS AN IMAGE
+  // ----------------------------------------------------
 
- const activeModel = currentModel;
+  const hasImage = conversationHistory.some(msg => {
+    if (!Array.isArray(msg.content)) return false;
+
+    return msg.content.some(
+      part => part && part.type === "image_url"
+    );
+  });
 
   try {
-    const sanitizedHistory = conversationHistory.map(msg => {
-  if (Array.isArray(msg.content)) {
-    const textParts = msg.content
-      .filter(part => part.type === "text")
-      .map(part => part.text)
-      .join("\n");
-
-    return {
-      role: msg.role,
-      content: textParts || "[Image attached]"
-    };
-  }
-
-  return {
-    role: msg.role,
-    content: String(msg.content || "")
-  };
-});
+    // ----------------------------------------------------
+    // IMPORTANT:
+    // DO NOT STRIP IMAGE CONTENT.
+    // ----------------------------------------------------
 
     const apiMessages = [
       {
@@ -1202,23 +1224,36 @@ async function sendMessage() {
         content:
           "You are Nebula, a helpful AI assistant capable of analyzing text and images directly. Answer accurately and be friendly. Use emojis when appropriate."
       },
-      ...sanitizedHistory
+      ...conversationHistory
     ];
+
+    // ----------------------------------------------------
+    // SEND TO NEBULA BACKEND
+    // ----------------------------------------------------
 
     const response = await fetch(
       "https://nebula-backend.vercel.app/api/chat",
       {
         method: "POST",
         signal: currentAbortController.signal,
+
         headers: {
           "Content-Type": "application/json"
         },
+
         body: JSON.stringify({
           messages: apiMessages,
-          model: currentModel
+
+          // Normal model when text only.
+          // "vision" tells backend to use an image-capable model.
+          model: hasImage ? "vision" : activeModel
         })
       }
     );
+
+    // ----------------------------------------------------
+    // ERROR HANDLING
+    // ----------------------------------------------------
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
@@ -1230,84 +1265,134 @@ async function sendMessage() {
       );
     }
 
+    if (!response.body) {
+      throw new Error("Backend returned an empty response.");
+    }
+
+    // ----------------------------------------------------
+    // STREAM RESPONSE
+    // ----------------------------------------------------
+
     const reader = response.body.getReader();
-const decoder = new TextDecoder();
+    const decoder = new TextDecoder();
 
-let buffer = "";
-let assistantText = "";
+    let buffer = "";
+    let assistantText = "";
 
-while (true) {
-  const { done, value } = await reader.read();
+    while (true) {
+      const { done, value } = await reader.read();
 
-  if (done) break;
+      if (done) break;
 
-  buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, {
+        stream: true
+      });
 
-  const lines = buffer.split("\n");
-  buffer = lines.pop() || "";
+      const lines = buffer.split("\n");
 
-  for (const line of lines) {
-    const trimmed = line.trim();
+      // Keep incomplete line for next chunk
+      buffer = lines.pop() || "";
 
-    if (!trimmed || !trimmed.startsWith("data:")) {
-      continue;
-    }
+      for (const line of lines) {
+        const trimmed = line.trim();
 
-    const dataLine = trimmed.slice(5).trim();
+        if (!trimmed) continue;
 
-    if (dataLine === "[DONE]") {
-      continue;
-    }
+        if (!trimmed.startsWith("data:")) {
+          continue;
+        }
 
-    try {
-      const parsed = JSON.parse(dataLine);
+        const dataLine = trimmed.slice(5).trim();
 
-      const token =
-        parsed.choices?.[0]?.delta?.content || "";
+        if (dataLine === "[DONE]") {
+          continue;
+        }
 
-      if (!token) continue;
+        try {
+          const parsed = JSON.parse(dataLine);
 
-      assistantText += token;
+          const token =
+            parsed.choices?.[0]?.delta?.content || "";
 
-      const visibleText =
-        removeThinkingBlocks(assistantText);
+          if (!token) continue;
 
-      renderFormattedText(aiBubble, visibleText);
+          assistantText += token;
 
-      messagesList.scrollTop =
-        messagesList.scrollHeight;
+          const visibleText =
+            removeThinkingBlocks(assistantText);
 
-      if (TYPING_SPEED_MS > 0) {
-        await new Promise(resolve =>
-          setTimeout(resolve, TYPING_SPEED_MS)
-        );
+          renderFormattedText(
+            aiBubble,
+            visibleText
+          );
+
+          messagesList.scrollTop =
+            messagesList.scrollHeight;
+
+          // Your requested typing speed
+          if (TYPING_SPEED_MS > 0) {
+            await new Promise(resolve =>
+              setTimeout(
+                resolve,
+                TYPING_SPEED_MS
+              )
+            );
+          }
+
+        } catch (parseError) {
+          console.warn(
+            "Stream parsing error:",
+            parseError,
+            dataLine
+          );
+        }
       }
-
-    } catch (parseError) {
-      console.warn("Stream parsing error:", parseError);
     }
-  }
-}
 
-const finalText = removeThinkingBlocks(assistantText);
+    // Process anything left in the buffer
+    if (buffer.trim().startsWith("data:")) {
+      const dataLine = buffer
+        .trim()
+        .slice(5)
+        .trim();
 
-if (!finalText) {
-  aiBubble.textContent =
-    "I'm sorry, I couldn't generate a response. Please try again.";
-} else {
-  renderFormattedText(aiBubble, finalText);
+      if (
+        dataLine &&
+        dataLine !== "[DONE]"
+      ) {
+        try {
+          const parsed = JSON.parse(dataLine);
 
-  conversationHistory.push({
-    role: "assistant",
-    content: finalText
-  });
-}
+          const token =
+            parsed.choices?.[0]?.delta?.content || "";
+
+          if (token) {
+            assistantText += token;
+          }
+        } catch (error) {
+          console.warn(
+            "Final stream parse error:",
+            error
+          );
+        }
+      }
+    }
+
+    // ----------------------------------------------------
+    // FINAL RESPONSE
+    // ----------------------------------------------------
+
+    const finalText =
+      removeThinkingBlocks(assistantText);
 
     if (!finalText) {
       aiBubble.textContent =
         "I'm sorry, I couldn't generate a response. Please try again.";
     } else {
-      renderFormattedText(aiBubble, finalText);
+      renderFormattedText(
+        aiBubble,
+        finalText
+      );
 
       conversationHistory.push({
         role: "assistant",
@@ -1315,20 +1400,34 @@ if (!finalText) {
       });
     }
 
-    if (!currentChatId && conversationHistory.length >= 2) {
-      const firstUserMsg = conversationHistory.find(
-        msg => msg.role === "user"
-      );
+    // ----------------------------------------------------
+    // SAVE CHAT
+    // ----------------------------------------------------
+
+    if (
+      !currentChatId &&
+      conversationHistory.length >= 2
+    ) {
+      const firstUserMsg =
+        conversationHistory.find(
+          msg => msg.role === "user"
+        );
 
       let chatTitle = "New Chat";
 
       if (firstUserMsg) {
-        if (typeof firstUserMsg.content === "string") {
-          chatTitle = firstUserMsg.content;
-        } else if (Array.isArray(firstUserMsg.content)) {
-          const textObj = firstUserMsg.content.find(
-            c => c.type === "text"
-          );
+        if (
+          typeof firstUserMsg.content === "string"
+        ) {
+          chatTitle =
+            firstUserMsg.content;
+        } else if (
+          Array.isArray(firstUserMsg.content)
+        ) {
+          const textObj =
+            firstUserMsg.content.find(
+              part => part.type === "text"
+            );
 
           chatTitle = textObj
             ? textObj.text
@@ -1336,7 +1435,8 @@ if (!finalText) {
         }
       }
 
-      currentChatId = "chat_" + Date.now();
+      currentChatId =
+        "chat_" + Date.now();
 
       allSavedChats.push({
         id: currentChatId,
@@ -1345,21 +1445,28 @@ if (!finalText) {
       });
 
       if (historyList) {
-        const li = createHistoryListItem(
-          currentChatId,
-          chatTitle
-        );
+        const li =
+          createHistoryListItem(
+            currentChatId,
+            chatTitle
+          );
 
         li.classList.add("active");
+
         historyList.appendChild(li);
       }
+
     } else if (currentChatId) {
-      const currentChatObj = allSavedChats.find(
-        chat => chat.id === currentChatId
-      );
+
+      const currentChatObj =
+        allSavedChats.find(
+          chat =>
+            chat.id === currentChatId
+        );
 
       if (currentChatObj) {
-        currentChatObj.history = [...conversationHistory];
+        currentChatObj.history =
+          [...conversationHistory];
       }
     }
 
@@ -1368,9 +1475,11 @@ if (!finalText) {
   } catch (err) {
 
     if (err.name === "AbortError") {
-      const stoppedText = removeThinkingBlocks(
-        aiBubble.textContent || ""
-      );
+
+      const stoppedText =
+        removeThinkingBlocks(
+          aiBubble.textContent || ""
+        );
 
       if (stoppedText) {
         conversationHistory.push({
@@ -1380,12 +1489,20 @@ if (!finalText) {
       }
 
     } else {
-      console.error("API Request Error:", err);
-      aiBubble.textContent = `Error: ${err.message}`;
+
+      console.error(
+        "API Request Error:",
+        err
+      );
+
+      aiBubble.textContent =
+        `Error: ${err.message}`;
     }
 
   } finally {
+
     currentAbortController = null;
+
     setGeneratingState(false);
   }
 }

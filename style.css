@@ -1670,25 +1670,37 @@ input[type="file"]#settings-pfp-input::-webkit-file-upload-button:hover {
 }
 
 /* ================================
-   MOBILE RESPONSIVE DESIGN
+   MOBILE FIX
    ================================ */
 
 @media (max-width: 768px) {
 
-  /* Hide desktop sidebar */
-  .sidebar {
-    display: none;
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
   }
 
-  /* Main chat takes the entire screen */
-  .chat-main {
+  .app-container {
     width: 100%;
     height: 100dvh;
   }
 
+  .sidebar {
+    display: none;
+  }
+
+  .chat-main {
+    width: 100%;
+    height: 100dvh;
+    min-width: 0;
+  }
+
   /* Header */
   .top-header {
-    height: 56px;
+    height: 58px;
+    min-height: 58px;
     padding: 0 14px;
   }
 
@@ -1696,53 +1708,19 @@ input[type="file"]#settings-pfp-input::-webkit-file-upload-button:hover {
     font-size: 1.05rem;
   }
 
-  .logo-group {
-    gap: 8px;
-  }
-
-  .nebula-logo {
-    width: 28px;
-    height: 28px;
-  }
-
-  .header-right {
-    gap: 6px;
-  }
-
   .loader-badge {
     display: none;
   }
 
-  /* Chat messages */
+  /* Chat area */
   .chat-viewport {
+    min-width: 0;
     padding: 20px 14px;
-    min-width: 0;
-  }
-
-  .messages-list {
-    gap: 18px;
-  }
-
-  .message-row {
-    gap: 10px;
-  }
-
-  .message-avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 0.7rem;
-  }
-
-  .message-bubble {
-    min-width: 0;
-    font-size: 0.9rem;
-    overflow-wrap: anywhere;
   }
 
   /* Welcome screen */
   .welcome-screen {
     width: 100%;
-    padding: 0 4px;
   }
 
   .welcome-screen h1 {
@@ -1751,55 +1729,117 @@ input[type="file"]#settings-pfp-input::-webkit-file-upload-button:hover {
 
   .welcome-screen p {
     font-size: 0.85rem;
-    max-width: 90%;
-    margin-bottom: 24px;
   }
 
-  .welcome-logo-img {
-    width: 60px;
-    height: 60px;
-  }
-
-  /* Suggestions */
   .suggestions-grid {
     grid-template-columns: 1fr;
-    gap: 8px;
     width: 100%;
+    gap: 10px;
   }
 
-  .suggestions-grid .card {
-    padding: 13px;
-  }
+  /* ================================
+     INPUT BAR
+     ================================ */
 
-  /* Input area */
   .input-area {
-    padding: 0 10px 10px 10px;
+    width: 100%;
+    padding: 0 10px 8px;
+    flex-shrink: 0;
   }
 
   .input-wrapper {
-    padding: 7px 9px;
+    width: 100%;
+    min-width: 0;
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
     gap: 6px;
-    border-radius: 20px;
+    padding: 7px 9px;
+
+    border-radius: 18px;
+  }
+
+  /* Attachment preview gets its OWN row */
+  .file-previews {
+    order: -10;
+
+    width: 100%;
+    flex: 0 0 100%;
+
+    min-width: 0;
+
+    display: flex;
+    flex-wrap: nowrap;
+
+    padding: 0 0 5px;
+    border-bottom: none;
+
+    overflow-x: auto;
+  }
+
+  .file-chip {
+    flex-shrink: 0;
+    max-width: 220px;
+  }
+
+  /* Actual typing area */
+  .animated-input-container {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+
+  #user-input {
+    width: 100%;
+    min-width: 0;
+    min-height: 36px;
+
+    padding-left: 8px !important;
+
+    font-size: 16px !important;
   }
 
   textarea {
-    font-size: 16px;
     min-width: 0;
+    width: 100%;
+    flex: 1;
   }
 
-  #send-btn {
+  /* Plus button */
+  .action-trigger-btn {
     width: 34px;
     height: 34px;
     flex-shrink: 0;
   }
 
-  /* Hide long dropdown text on very small screens */
+  /* Model dropdown */
+  .custom-dropdown {
+    flex-shrink: 0;
+  }
+
   .dropdown-trigger {
+    max-width: 90px;
     padding: 6px 8px;
     font-size: 0.75rem;
   }
 
-  /* Dropdown menus fit the phone */
+  /* Send button */
+  #send-btn {
+    width: 35px;
+    height: 35px;
+    flex-shrink: 0;
+  }
+
+  /* Disclaimer */
+  .disclaimer {
+    margin-top: 6px;
+    font-size: 0.65rem;
+    padding: 0 5px;
+  }
+
+  /* Dropdowns must fit phone */
   .dropdown-menu {
     width: min(290px, calc(100vw - 20px));
     max-width: calc(100vw - 20px);
@@ -1810,94 +1850,35 @@ input[type="file"]#settings-pfp-input::-webkit-file-upload-button:hover {
     max-width: calc(100vw - 20px);
   }
 
-  /* File previews */
-  .file-previews {
-    max-width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-  }
-
-  .file-chip {
-    flex-shrink: 0;
-    max-width: 180px;
-  }
-
-  /* Attached images/videos */
+  /* Attachments in messages */
   .chat-attached-image {
-    max-width: min(240px, 70vw);
+    max-width: 70vw;
     height: auto;
   }
 
   .chat-attached-video {
-    max-width: min(280px, 75vw);
+    max-width: 75vw;
     height: auto;
-  }
-
-  /* Modals */
-  .modal-overlay {
-    padding: 12px;
-  }
-
-  .modal-card {
-    max-width: 100%;
-    padding: 22px 18px;
-    max-height: 90dvh;
-    overflow-y: auto;
-  }
-
-  /* Full page settings/signup */
-  .full-page-overlay {
-    padding: 16px 10px;
-    align-items: flex-start;
-  }
-
-  .full-page-content {
-    width: 100%;
-    max-width: 100%;
-    padding: 22px 16px;
-    margin-top: 20px;
-  }
-
-  .full-page-close {
-    top: 10px;
-    right: 12px;
   }
 }
 
-/* Extra small phones */
+/* Very small phones */
 @media (max-width: 400px) {
 
-  .top-header {
-    padding: 0 10px;
-  }
-
-  .brand-name {
-    font-size: 0.95rem;
-  }
-
-  .chat-viewport {
-    padding: 16px 10px;
-  }
-
   .input-area {
-    padding: 0 7px 8px;
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .input-wrapper {
+    padding: 6px 7px;
+  }
+
+  .dropdown-trigger {
+    max-width: 75px;
   }
 
   .welcome-screen h1 {
     font-size: 1.5rem;
-  }
-
-  .message-row {
-    gap: 8px;
-  }
-
-  .message-bubble {
-    font-size: 0.875rem;
-  }
-
-  .dropdown-trigger {
-    max-width: 100px;
-    overflow: hidden;
-    white-space: nowrap;
   }
 }

@@ -7,8 +7,8 @@ const TYPING_SPEED_MS = 35;
 // Define usage limits for non-Mini-X models
 const MODEL_LIMITS = {
   "mini-x": Infinity,
-  "flash": 1000,
-  "pro": 1000
+  "flash": 100,
+  "pro": 50
 };
 
 // Global controller to abort running streams

@@ -6,8 +6,9 @@ const TYPING_SPEED_MS = 35;
 
 // Define usage limits for non-Mini-X models
 const MODEL_LIMITS = {
-  flash: 100,
-  pro: 50
+  "mini-x": Infinity,
+  "flash": 100,
+  "pro": 50
 };
 
 // Global controller to abort running streams
@@ -46,9 +47,6 @@ const historyList = document.getElementById("history-list");
 // ==========================================================================
 // NEBULA MODEL & MODIFIER CHOOSER LOGIC
 // ==========================================================================
-
-// --- COOLDOWN SYSTEM ---
-const MODEL_LIMIT = 3; // Maximum allowed messages for Pro/Flash before lock
 const COOLDOWN_DURATION_MS = 60 * 60 * 1000; // 1 hour in milliseconds
 
 let messageCount = parseInt(localStorage.getItem('chat_msg_count') || '0');
@@ -1176,9 +1174,7 @@ async function sendMessage() {
     file.type.startsWith("image/")
   );
 
-  const activeModel = hasImage
-    ? "llama-3.2-11b-vision-instruct"
-    : "groq/compound";
+ const activeModel = currentModel;
 
   try {
     const sanitizedHistory = conversationHistory.map(msg => ({

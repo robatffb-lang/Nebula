@@ -1519,10 +1519,10 @@ function appendMessage(sender, text, files = []) {
     if (userData.pfpUrl) {
       avatar.innerHTML = `<img src="${userData.pfpUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
     } else {
-      avatar.textContent = userData.displayName ? userData.displayName.charAt(0).toUpperCase() : "U";
+      avatar.textContent = userData.displayName ? userData.displayName.charAt(0).toUpperCase() : "ME";
     }
   } else {
-    avatar.textContent = "N";
+  avatar.innerHTML = `<img src="logo1.jpg" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
   }
 
   const bubble = document.createElement("div");

@@ -1216,12 +1216,77 @@ async function sendMessage() {
       );
     }
 
-    const data = await response.json();
+    const reader = response.body.getReader();
+const decoder = new TextDecoder();
 
-    const assistantText =
-      data.choices?.[0]?.message?.content || "";
+let assistantText = "";
+let displayText = "";
 
-    const finalText = removeThinkingBlocks(assistantText);
+while (true) {
+  const { done, value } = await reader.read();
+
+  if (done) break;
+
+  const chunk = decoder.decode(value, { stream: true });
+
+  const lines = chunk.split("\n");
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed || !trimmed.startsWith("data:")) {
+      continue;
+    }
+
+    const dataLine = trimmed.slice(5).trim();
+
+    if (dataLine === "[DONE]") {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(dataLine);
+
+      const token =
+        parsed.choices?.[0]?.delta?.content || "";
+
+      if (!token) continue;
+
+      assistantText += token;
+
+      // Remove any thinking blocks before displaying.
+      displayText = removeThinkingBlocks(assistantText);
+
+      renderFormattedText(aiBubble, displayText);
+
+      messagesList.scrollTop = messagesList.scrollHeight;
+
+      // Small delay so the response visibly types.
+      if (TYPING_SPEED_MS > 0) {
+        await new Promise(resolve =>
+          setTimeout(resolve, TYPING_SPEED_MS)
+        );
+      }
+
+    } catch (parseError) {
+      // Ignore incomplete SSE chunks.
+    }
+  }
+}
+
+const finalText = removeThinkingBlocks(assistantText);
+
+if (!finalText) {
+  aiBubble.textContent =
+    "I'm sorry, I couldn't generate a response. Please try again.";
+} else {
+  renderFormattedText(aiBubble, finalText);
+
+  conversationHistory.push({
+    role: "assistant",
+    content: finalText
+  });
+}
 
     if (!finalText) {
       aiBubble.textContent =

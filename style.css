@@ -1668,3 +1668,236 @@ input[type="file"]#settings-pfp-input::-webkit-file-upload-button:hover {
   .chat-viewport, .input-area { padding-left: 16px; padding-right: 16px; }
   .suggestions-grid { grid-template-columns: 1fr; }
 }
+
+/* ================================
+   MOBILE RESPONSIVE DESIGN
+   ================================ */
+
+@media (max-width: 768px) {
+
+  /* Hide desktop sidebar */
+  .sidebar {
+    display: none;
+  }
+
+  /* Main chat takes the entire screen */
+  .chat-main {
+    width: 100%;
+    height: 100dvh;
+  }
+
+  /* Header */
+  .top-header {
+    height: 56px;
+    padding: 0 14px;
+  }
+
+  .brand-name {
+    font-size: 1.05rem;
+  }
+
+  .logo-group {
+    gap: 8px;
+  }
+
+  .nebula-logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .header-right {
+    gap: 6px;
+  }
+
+  .loader-badge {
+    display: none;
+  }
+
+  /* Chat messages */
+  .chat-viewport {
+    padding: 20px 14px;
+    min-width: 0;
+  }
+
+  .messages-list {
+    gap: 18px;
+  }
+
+  .message-row {
+    gap: 10px;
+  }
+
+  .message-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.7rem;
+  }
+
+  .message-bubble {
+    min-width: 0;
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+  }
+
+  /* Welcome screen */
+  .welcome-screen {
+    width: 100%;
+    padding: 0 4px;
+  }
+
+  .welcome-screen h1 {
+    font-size: 1.7rem;
+  }
+
+  .welcome-screen p {
+    font-size: 0.85rem;
+    max-width: 90%;
+    margin-bottom: 24px;
+  }
+
+  .welcome-logo-img {
+    width: 60px;
+    height: 60px;
+  }
+
+  /* Suggestions */
+  .suggestions-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .suggestions-grid .card {
+    padding: 13px;
+  }
+
+  /* Input area */
+  .input-area {
+    padding: 0 10px 10px 10px;
+  }
+
+  .input-wrapper {
+    padding: 7px 9px;
+    gap: 6px;
+    border-radius: 20px;
+  }
+
+  textarea {
+    font-size: 16px;
+    min-width: 0;
+  }
+
+  #send-btn {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+  }
+
+  /* Hide long dropdown text on very small screens */
+  .dropdown-trigger {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+
+  /* Dropdown menus fit the phone */
+  .dropdown-menu {
+    width: min(290px, calc(100vw - 20px));
+    max-width: calc(100vw - 20px);
+  }
+
+  .action-menu {
+    width: min(180px, calc(100vw - 20px));
+    max-width: calc(100vw - 20px);
+  }
+
+  /* File previews */
+  .file-previews {
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .file-chip {
+    flex-shrink: 0;
+    max-width: 180px;
+  }
+
+  /* Attached images/videos */
+  .chat-attached-image {
+    max-width: min(240px, 70vw);
+    height: auto;
+  }
+
+  .chat-attached-video {
+    max-width: min(280px, 75vw);
+    height: auto;
+  }
+
+  /* Modals */
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal-card {
+    max-width: 100%;
+    padding: 22px 18px;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+
+  /* Full page settings/signup */
+  .full-page-overlay {
+    padding: 16px 10px;
+    align-items: flex-start;
+  }
+
+  .full-page-content {
+    width: 100%;
+    max-width: 100%;
+    padding: 22px 16px;
+    margin-top: 20px;
+  }
+
+  .full-page-close {
+    top: 10px;
+    right: 12px;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 400px) {
+
+  .top-header {
+    padding: 0 10px;
+  }
+
+  .brand-name {
+    font-size: 0.95rem;
+  }
+
+  .chat-viewport {
+    padding: 16px 10px;
+  }
+
+  .input-area {
+    padding: 0 7px 8px;
+  }
+
+  .welcome-screen h1 {
+    font-size: 1.5rem;
+  }
+
+  .message-row {
+    gap: 8px;
+  }
+
+  .message-bubble {
+    font-size: 0.875rem;
+  }
+
+  .dropdown-trigger {
+    max-width: 100px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}

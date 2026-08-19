@@ -898,88 +898,157 @@ if (customLangSelect) {
 // ----------------------------------------------------
 // SETTINGS FORM & PROFILE PICTURE UPDATE
 // ----------------------------------------------------
-const settingsBtn = document.getElementById("settings-btn");
-const settingsModal = document.getElementById("settings-modal");
-const settingsCloseBtn = document.getElementById("settings-close-btn");
-const settingsForm = document.getElementById("settings-form");
+document.addEventListener("DOMContentLoaded", () => {
 
-const settingsUsername = document.getElementById("settings-username");
-const settingsDisplayName = document.getElementById("settings-displayname");
+  const settingsBtn = document.getElementById("settings-btn");
+  const settingsModal = document.getElementById("settings-modal");
+  const settingsCloseBtn = document.getElementById("settings-close-btn");
+  const settingsForm = document.getElementById("settings-form");
 
-if (settingsBtn) {
+  const settingsUsername = document.getElementById("settings-username");
+  const settingsDisplayName = document.getElementById("settings-displayname");
+
+  if (!settingsBtn || !settingsModal) {
+    console.error("Nebula Settings: Settings button or modal not found.");
+    return;
+  }
+
   settingsBtn.addEventListener("click", () => {
-    const currentLang = localStorage.getItem("nebula_language") || "en";
+
+    const currentLang =
+      localStorage.getItem("nebula_language") || "en";
+
     setCustomLangSelect(currentLang);
 
     if (currentAccountId) {
       const userData = loadUserData(currentAccountId);
-      if (settingsUsername) settingsUsername.value = currentAccountId;
-      if (settingsDisplayName) settingsDisplayName.value = userData.displayName;
+
+      if (settingsUsername) {
+        settingsUsername.value = currentAccountId;
+      }
+
+      if (settingsDisplayName) {
+        settingsDisplayName.value = userData.displayName;
+      }
     }
 
     settingsModal.classList.remove("hidden");
   });
-}
 
-const closeSettingsModal = () => {
-  if (settingsModal) settingsModal.classList.add("hidden");
-  if (customLangSelect) customLangSelect.classList.remove("open");
-};
+  function closeSettingsModal() {
+    settingsModal.classList.add("hidden");
 
-if (settingsCloseBtn) settingsCloseBtn.addEventListener("click", closeSettingsModal);
-if (settingsModal) {
+    if (customLangSelect) {
+      customLangSelect.classList.remove("open");
+    }
+  }
+
+  if (settingsCloseBtn) {
+    settingsCloseBtn.addEventListener(
+      "click",
+      closeSettingsModal
+    );
+  }
+
   settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) closeSettingsModal();
-  });
-}
-
-if (settingsForm) {
-  settingsForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    
-    const language = hiddenLangInput ? hiddenLangInput.value : "en";
-    const displayName = settingsDisplayName ? settingsDisplayName.value.trim() : "";
-    
-    const pfpFileInput = document.getElementById("settings-pfp-input");
-    const pfpUrlInput = document.getElementById("settings-pfp-url"); 
-
-    localStorage.setItem("nebula_language", language);
-    updateUILanguage(language);
-
-    if (currentAccountId) {
-      const activeDisplayName = displayName || currentAccountId;
-
-      const applyAndSave = (pfpUrl) => {
-        saveUserData(currentAccountId, activeDisplayName, pfpUrl);
-        renderUserProfile(activeDisplayName, pfpUrl);
-        closeSettingsModal();
-      };
-
-      if (pfpFileInput && pfpFileInput.files && pfpFileInput.files[0]) {
-        const file = pfpFileInput.files[0];
-        const reader = new FileReader();
-
-        reader.onload = function (event) {
-          const newPfpUrl = event.target.result;
-          applyAndSave(newPfpUrl);
-        };
-
-        reader.readAsDataURL(file);
-      } 
-      else if (pfpUrlInput && pfpUrlInput.value.trim() !== "") {
-        const directUrl = pfpUrlInput.value.trim();
-        applyAndSave(directUrl);
-      } 
-      else {
-        const currentPfp = localStorage.getItem(`nebula_pfp_${currentAccountId}`);
-        applyAndSave(currentPfp);
-      }
-    } else {
+    if (e.target === settingsModal) {
       closeSettingsModal();
     }
   });
-}
 
+  if (settingsForm) {
+    settingsForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const language =
+        hiddenLangInput
+          ? hiddenLangInput.value
+          : "en";
+
+      const displayName =
+        settingsDisplayName
+          ? settingsDisplayName.value.trim()
+          : "";
+
+      const pfpFileInput =
+        document.getElementById("settings-pfp-input");
+
+      const pfpUrlInput =
+        document.getElementById("settings-pfp-url");
+
+      localStorage.setItem(
+        "nebula_language",
+        language
+      );
+
+      updateUILanguage(language);
+
+      if (currentAccountId) {
+
+        const activeDisplayName =
+          displayName || currentAccountId;
+
+        const applyAndSave = (pfpUrl) => {
+
+          saveUserData(
+            currentAccountId,
+            activeDisplayName,
+            pfpUrl
+          );
+
+          renderUserProfile(
+            activeDisplayName,
+            pfpUrl
+          );
+
+          closeSettingsModal();
+        };
+
+        if (
+          pfpFileInput &&
+          pfpFileInput.files &&
+          pfpFileInput.files[0]
+        ) {
+
+          const file =
+            pfpFileInput.files[0];
+
+          const reader =
+            new FileReader();
+
+          reader.onload = (event) => {
+            applyAndSave(
+              event.target.result
+            );
+          };
+
+          reader.readAsDataURL(file);
+
+        } else if (
+          pfpUrlInput &&
+          pfpUrlInput.value.trim() !== ""
+        ) {
+
+          applyAndSave(
+            pfpUrlInput.value.trim()
+          );
+
+        } else {
+
+          const currentPfp =
+            localStorage.getItem(
+              `nebula_pfp_${currentAccountId}`
+            );
+
+          applyAndSave(currentPfp);
+        }
+
+      } else {
+        closeSettingsModal();
+      }
+    });
+  }
+});
 // ----------------------------------------------------
 // HELPER: COMPRESS IMAGE & STRIP THINK BLOCKS
 // ----------------------------------------------------

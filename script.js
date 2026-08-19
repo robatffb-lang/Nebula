@@ -901,6 +901,13 @@ if (customLangSelect) {
 document.addEventListener("DOMContentLoaded", () => {
 
   const settingsBtn = document.getElementById("settings-btn");
+console.log("SETTINGS BUTTON:", settingsBtn);
+
+if (settingsBtn) {
+  settingsBtn.addEventListener("click", () => {
+    console.log("SETTINGS CLICKED");
+
+  const currentLang = localStorage.getItem("nebula_language") || "en";
   const settingsModal = document.getElementById("settings-modal");
   const settingsCloseBtn = document.getElementById("settings-close-btn");
   const settingsForm = document.getElementById("settings-form");

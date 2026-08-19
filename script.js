@@ -908,33 +908,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const settingsUsername = document.getElementById("settings-username");
   const settingsDisplayName = document.getElementById("settings-displayname");
 
-  if (!settingsBtn || !settingsModal) {
-    console.error("Nebula Settings: Settings button or modal not found.");
-    return;
-  }
-
-  settingsBtn.addEventListener("click", () => {
-
-    const currentLang =
-      localStorage.getItem("nebula_language") || "en";
-
-    setCustomLangSelect(currentLang);
-
-    if (currentAccountId) {
-      const userData = loadUserData(currentAccountId);
-
-      if (settingsUsername) {
-        settingsUsername.value = currentAccountId;
-      }
-
-      if (settingsDisplayName) {
-        settingsDisplayName.value = userData.displayName;
-      }
-    }
-
-    settingsModal.classList.remove("hidden");
-  });
-
   function closeSettingsModal() {
     settingsModal.classList.add("hidden");
 

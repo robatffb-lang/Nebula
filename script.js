@@ -898,137 +898,259 @@ if (customLangSelect) {
 // ----------------------------------------------------
 // SETTINGS FORM & PROFILE PICTURE UPDATE
 // ----------------------------------------------------
+
 document.addEventListener("DOMContentLoaded", () => {
 
+  console.log("SETTINGS SYSTEM LOADED");
+
   const settingsBtn = document.getElementById("settings-btn");
-console.log("SETTINGS BUTTON:", settingsBtn);
-
-if (settingsBtn) {
-  settingsBtn.addEventListener("click", () => {
-    console.log("SETTINGS CLICKED");
-
-  const currentLang = localStorage.getItem("nebula_language") || "en";
   const settingsModal = document.getElementById("settings-modal");
   const settingsCloseBtn = document.getElementById("settings-close-btn");
   const settingsForm = document.getElementById("settings-form");
 
-  const settingsUsername = document.getElementById("settings-username");
-  const settingsDisplayName = document.getElementById("settings-displayname");
+  const settingsUsername =
+    document.getElementById("settings-username");
+
+  const settingsDisplayName =
+    document.getElementById("settings-displayname");
+
+  console.log("Settings button:", settingsBtn);
+  console.log("Settings modal:", settingsModal);
+
+  // =========================
+  // OPEN SETTINGS
+  // =========================
+
+  if (settingsBtn && settingsModal) {
+
+    settingsBtn.addEventListener("click", (e) => {
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log("SETTINGS CLICKED");
+
+      const currentLang =
+        localStorage.getItem("nebula_language") || "en";
+
+      if (typeof setCustomLangSelect === "function") {
+        setCustomLangSelect(currentLang);
+      }
+
+      // Load current user information
+      if (currentAccountId) {
+
+        const userData =
+          loadUserData(currentAccountId);
+
+        if (settingsUsername) {
+          settingsUsername.value =
+            currentAccountId;
+        }
+
+        if (settingsDisplayName) {
+          settingsDisplayName.value =
+            userData.displayName || "";
+        }
+      }
+
+      // OPEN MODAL
+      settingsModal.classList.remove("hidden");
+
+      // Force it visible in case CSS is interfering
+      settingsModal.style.display = "flex";
+
+      console.log("Settings modal opened");
+    });
+
+  } else {
+
+    console.error(
+      "Settings button or modal was not found."
+    );
+
+  }
+
+  // =========================
+  // CLOSE SETTINGS
+  // =========================
 
   function closeSettingsModal() {
+
+    if (!settingsModal) return;
+
     settingsModal.classList.add("hidden");
+
+    settingsModal.style.display = "";
 
     if (customLangSelect) {
       customLangSelect.classList.remove("open");
     }
   }
 
+  // Close X button
   if (settingsCloseBtn) {
+
     settingsCloseBtn.addEventListener(
       "click",
-      closeSettingsModal
-    );
-  }
+      (e) => {
 
-  settingsModal.addEventListener("click", (e) => {
-    if (e.target === settingsModal) {
-      closeSettingsModal();
-    }
-  });
+        e.preventDefault();
+        e.stopPropagation();
 
-  if (settingsForm) {
-    settingsForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-
-      const language =
-        hiddenLangInput
-          ? hiddenLangInput.value
-          : "en";
-
-      const displayName =
-        settingsDisplayName
-          ? settingsDisplayName.value.trim()
-          : "";
-
-      const pfpFileInput =
-        document.getElementById("settings-pfp-input");
-
-      const pfpUrlInput =
-        document.getElementById("settings-pfp-url");
-
-      localStorage.setItem(
-        "nebula_language",
-        language
-      );
-
-      updateUILanguage(language);
-
-      if (currentAccountId) {
-
-        const activeDisplayName =
-          displayName || currentAccountId;
-
-        const applyAndSave = (pfpUrl) => {
-
-          saveUserData(
-            currentAccountId,
-            activeDisplayName,
-            pfpUrl
-          );
-
-          renderUserProfile(
-            activeDisplayName,
-            pfpUrl
-          );
-
-          closeSettingsModal();
-        };
-
-        if (
-          pfpFileInput &&
-          pfpFileInput.files &&
-          pfpFileInput.files[0]
-        ) {
-
-          const file =
-            pfpFileInput.files[0];
-
-          const reader =
-            new FileReader();
-
-          reader.onload = (event) => {
-            applyAndSave(
-              event.target.result
-            );
-          };
-
-          reader.readAsDataURL(file);
-
-        } else if (
-          pfpUrlInput &&
-          pfpUrlInput.value.trim() !== ""
-        ) {
-
-          applyAndSave(
-            pfpUrlInput.value.trim()
-          );
-
-        } else {
-
-          const currentPfp =
-            localStorage.getItem(
-              `nebula_pfp_${currentAccountId}`
-            );
-
-          applyAndSave(currentPfp);
-        }
-
-      } else {
         closeSettingsModal();
       }
-    });
+    );
+
   }
+
+  // Close when clicking outside the settings box
+  if (settingsModal) {
+
+    settingsModal.addEventListener(
+      "click",
+      (e) => {
+
+        if (e.target === settingsModal) {
+          closeSettingsModal();
+        }
+
+      }
+    );
+
+  }
+
+  // =========================
+  // SAVE SETTINGS
+  // =========================
+
+  if (settingsForm) {
+
+    settingsForm.addEventListener(
+      "submit",
+      (e) => {
+
+        e.preventDefault();
+
+        const language =
+          hiddenLangInput
+            ? hiddenLangInput.value
+            : "en";
+
+        const displayName =
+          settingsDisplayName
+            ? settingsDisplayName.value.trim()
+            : "";
+
+        const pfpFileInput =
+          document.getElementById(
+            "settings-pfp-input"
+          );
+
+        const pfpUrlInput =
+          document.getElementById(
+            "settings-pfp-url"
+          );
+
+        // Save language
+        localStorage.setItem(
+          "nebula_language",
+          language
+        );
+
+        if (typeof updateUILanguage === "function") {
+          updateUILanguage(language);
+        }
+
+        // =========================
+        // SAVE USER PROFILE
+        // =========================
+
+        if (currentAccountId) {
+
+          const activeDisplayName =
+            displayName || currentAccountId;
+
+          const applyAndSave = (pfpUrl) => {
+
+            saveUserData(
+              currentAccountId,
+              activeDisplayName,
+              pfpUrl
+            );
+
+            renderUserProfile(
+              activeDisplayName,
+              pfpUrl
+            );
+
+            closeSettingsModal();
+          };
+
+          // Upload PFP
+          if (
+            pfpFileInput &&
+            pfpFileInput.files &&
+            pfpFileInput.files.length > 0
+          ) {
+
+            const file =
+              pfpFileInput.files[0];
+
+            const reader =
+              new FileReader();
+
+            reader.onload = (event) => {
+
+              applyAndSave(
+                event.target.result
+              );
+
+            };
+
+            reader.readAsDataURL(file);
+
+          }
+
+          // PFP URL
+          else if (
+            pfpUrlInput &&
+            pfpUrlInput.value.trim() !== ""
+          ) {
+
+            applyAndSave(
+              pfpUrlInput.value.trim()
+            );
+
+          }
+
+          // Keep existing PFP
+          else {
+
+            const currentPfp =
+              localStorage.getItem(
+                `nebula_pfp_${currentAccountId}`
+              );
+
+            applyAndSave(currentPfp);
+          }
+
+        }
+
+        // Not logged in
+        else {
+
+          closeSettingsModal();
+
+        }
+
+      }
+    );
+
+  }
+
 });
+
 // ----------------------------------------------------
 // HELPER: COMPRESS IMAGE & STRIP THINK BLOCKS
 // ----------------------------------------------------

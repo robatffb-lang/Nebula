@@ -1882,3 +1882,64 @@ input[type="file"]#settings-pfp-input::-webkit-file-upload-button:hover {
     font-size: 1.5rem;
   }
 }
+
+/* ====================================================
+   AI GENERATED IMAGE
+   ==================================================== */
+.generated-image-card {
+  margin-top: 10px;
+  max-width: 640px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--card-bg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.generated-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 640px;
+  object-fit: contain;
+  background: #0b0d12;
+}
+.generated-image-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid var(--border-color);
+}
+.generated-image-btn {
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  padding: 7px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+}
+.generated-image-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-purple);
+}
+.image-generating {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  padding: 8px 0;
+}
+.image-generating::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,.2);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: imageSpin .8s linear infinite;
+}
+@keyframes imageSpin {
+  to { transform: rotate(360deg); }
+}

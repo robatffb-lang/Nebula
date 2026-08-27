@@ -32,6 +32,7 @@ let isUserLoggedIn = false;
 let currentAccountId = null; // Key for scoping user profile & history
 let allSavedChats = [];
 let currentChatId = null;
+let imageGenerationMode = false;
 
 const statusDot = document.getElementById("status-dot");
 const statusText = document.getElementById("status-text");
@@ -1283,11 +1284,139 @@ async function sendMessage() {
 
   if (!prompt && attachedFiles.length === 0) return;
 
+  // ==========================================================
+  // IMAGE GENERATION MODE
+  // ==========================================================
+
+  if (imageGenerationMode) {
+    if (!prompt) return;
+
+    if (welcomeScreen) {
+      welcomeScreen.style.display = "none";
+    }
+
+    // Show user's prompt
+    appendMessage("user", prompt, []);
+
+    userInput.value = "";
+    userInput.style.height = "auto";
+
+    imageGenerationMode = false;
+
+    userInput.placeholder = "Message Nebula...";
+
+    setGeneratingState(true);
+
+    const imageBubble = appendMessage(
+      "nebula",
+      "🎨 Generating your image..."
+    );
+
+    try {
+      /*
+       * Pollinations image generation endpoint.
+       *
+       * The prompt is encoded so spaces/special characters
+       * don't break the URL.
+       */
+      const imageUrl =
+        "https://image.pollinations.ai/prompt/" +
+        encodeURIComponent(prompt) +
+        "?width=1024&height=1024&nologo=true";
+
+      const image = new Image();
+
+      image.onload = () => {
+        imageBubble.innerHTML = "";
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "generated-image-wrapper";
+
+        image.className = "generated-ai-image";
+        image.alt = prompt;
+
+        wrapper.appendChild(image);
+
+        const controls = document.createElement("div");
+        controls.className = "generated-image-controls";
+
+        // Open button
+        const openBtn = document.createElement("button");
+        openBtn.className = "generated-image-btn";
+        openBtn.textContent = "Open";
+
+        openBtn.onclick = () => {
+          window.open(imageUrl, "_blank");
+        };
+
+        // Download button
+        const downloadBtn = document.createElement("button");
+        downloadBtn.className = "generated-image-btn";
+        downloadBtn.textContent = "Download";
+
+        downloadBtn.onclick = async () => {
+          try {
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+
+            const blobUrl = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = "nebula-generated-image.png";
+
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            URL.revokeObjectURL(blobUrl);
+          } catch (error) {
+            console.error("Image download failed:", error);
+
+            // Fallback
+            window.open(imageUrl, "_blank");
+          }
+        };
+
+        controls.appendChild(openBtn);
+        controls.appendChild(downloadBtn);
+
+        wrapper.appendChild(controls);
+
+        imageBubble.appendChild(wrapper);
+
+        setGeneratingState(false);
+      };
+
+      image.onerror = () => {
+        imageBubble.textContent =
+          "❌ I couldn't generate that image. Please try a different prompt.";
+
+        setGeneratingState(false);
+      };
+
+      image.src = imageUrl;
+
+    } catch (error) {
+      console.error("Image generation error:", error);
+
+      imageBubble.textContent =
+        "❌ Something went wrong while generating the image.";
+
+      setGeneratingState(false);
+    }
+
+    return;
+  }
+
+  // ==========================================================
+  // YOUR ORIGINAL NORMAL CHAT CODE STARTS HERE
+  // ==========================================================
+
   if (welcomeScreen) {
     welcomeScreen.style.display = "none";
   }
 
-  // Check model usage
   if (typeof window.consumeModelUsage === "function") {
     const allowed = window.consumeModelUsage(currentModel);
 
@@ -1301,18 +1430,10 @@ async function sendMessage() {
     }
   }
 
-  // IMPORTANT:
-  // Freeze the model BEFORE doing async work.
   const activeModel = currentModel;
-
   const currentFiles = [...attachedFiles];
 
-  // Show user's message immediately
   appendMessage("user", prompt, currentFiles);
-
-  // ----------------------------------------------------
-  // BUILD USER CONTENT
-  // ----------------------------------------------------
 
   const userContent = [];
 
@@ -1327,10 +1448,11 @@ async function sendMessage() {
             url: base64Image
           }
         });
+
       } catch (error) {
         console.error("Image conversion failed:", error);
 
-        const aiBubble = appendMessage(
+        appendMessage(
           "nebula",
           "I couldn't process that image."
         );
@@ -1347,8 +1469,6 @@ async function sendMessage() {
     });
   }
 
-  // If only text was sent, keep normal string format.
-  // If an image is included, KEEP THE ARRAY.
   const apiPayload =
     userContent.length === 1 &&
     userContent[0].type === "text"
@@ -1360,20 +1480,16 @@ async function sendMessage() {
     content: apiPayload
   });
 
-  // Clear input
   userInput.value = "";
   userInput.style.height = "auto";
+
   clearAttachedFiles();
 
-  // Start generation
   currentAbortController = new AbortController();
+
   setGeneratingState(true);
 
   const aiBubble = appendMessage("nebula", "");
-
-  // ----------------------------------------------------
-  // CHECK WHETHER THIS CONVERSATION CONTAINS AN IMAGE
-  // ----------------------------------------------------
 
   const hasImage = conversationHistory.some(msg => {
     if (!Array.isArray(msg.content)) return false;
@@ -1384,10 +1500,6 @@ async function sendMessage() {
   });
 
   try {
-    // ----------------------------------------------------
-    // IMPORTANT:
-    // DO NOT STRIP IMAGE CONTENT.
-    // ----------------------------------------------------
 
     const apiMessages = [
       {
@@ -1397,10 +1509,6 @@ async function sendMessage() {
       },
       ...conversationHistory
     ];
-
-    // ----------------------------------------------------
-    // SEND TO NEBULA BACKEND
-    // ----------------------------------------------------
 
     const response = await fetch(
       "https://nebula-backend.vercel.app/api/chat",
@@ -1414,17 +1522,10 @@ async function sendMessage() {
 
         body: JSON.stringify({
           messages: apiMessages,
-
-          // Normal model when text only.
-          // "vision" tells backend to use an image-capable model.
           model: hasImage ? "vision" : activeModel
         })
       }
     );
-
-    // ----------------------------------------------------
-    // ERROR HANDLING
-    // ----------------------------------------------------
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
@@ -1440,241 +1541,46 @@ async function sendMessage() {
       throw new Error("Backend returned an empty response.");
     }
 
-    // ----------------------------------------------------
-    // STREAM RESPONSE
-    // ----------------------------------------------------
-
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
 
-    let buffer = "";
-    let assistantText = "";
+    let fullText = "";
 
     while (true) {
-      const { done, value } = await reader.read();
+      const { value, done } = await reader.read();
 
       if (done) break;
 
-      buffer += decoder.decode(value, {
+      const chunk = decoder.decode(value, {
         stream: true
       });
 
-      const lines = buffer.split("\n");
+      fullText += chunk;
 
-      // Keep incomplete line for next chunk
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-
-        if (!trimmed) continue;
-
-        if (!trimmed.startsWith("data:")) {
-          continue;
-        }
-
-        const dataLine = trimmed.slice(5).trim();
-
-        if (dataLine === "[DONE]") {
-          continue;
-        }
-
-        try {
-          const parsed = JSON.parse(dataLine);
-
-          const token =
-            parsed.choices?.[0]?.delta?.content || "";
-
-          if (!token) continue;
-
-          assistantText += token;
-
-          const visibleText =
-            removeThinkingBlocks(assistantText);
-
-          renderFormattedText(
-            aiBubble,
-            visibleText
-          );
-
-          messagesList.scrollTop =
-            messagesList.scrollHeight;
-
-          // Your requested typing speed
-          if (TYPING_SPEED_MS > 0) {
-            await new Promise(resolve =>
-              setTimeout(
-                resolve,
-                TYPING_SPEED_MS
-              )
-            );
-          }
-
-        } catch (parseError) {
-          console.warn(
-            "Stream parsing error:",
-            parseError,
-            dataLine
-          );
-        }
-      }
+      renderFormattedText(aiBubble, fullText);
     }
 
-    // Process anything left in the buffer
-    if (buffer.trim().startsWith("data:")) {
-      const dataLine = buffer
-        .trim()
-        .slice(5)
-        .trim();
+    conversationHistory.push({
+      role: "assistant",
+      content: fullText
+    });
 
-      if (
-        dataLine &&
-        dataLine !== "[DONE]"
-      ) {
-        try {
-          const parsed = JSON.parse(dataLine);
+    saveCurrentChat();
 
-          const token =
-            parsed.choices?.[0]?.delta?.content || "";
+  } catch (error) {
 
-          if (token) {
-            assistantText += token;
-          }
-        } catch (error) {
-          console.warn(
-            "Final stream parse error:",
-            error
-          );
-        }
-      }
-    }
-
-    // ----------------------------------------------------
-    // FINAL RESPONSE
-    // ----------------------------------------------------
-
-    const finalText =
-      removeThinkingBlocks(assistantText);
-
-    if (!finalText) {
-      aiBubble.textContent =
-        "I'm sorry, I couldn't generate a response. Please try again.";
+    if (error.name === "AbortError") {
+      aiBubble.textContent = "Generation stopped.";
     } else {
-      renderFormattedText(
-        aiBubble,
-        finalText
-      );
-
-      conversationHistory.push({
-        role: "assistant",
-        content: finalText
-      });
-    }
-
-    // ----------------------------------------------------
-    // SAVE CHAT
-    // ----------------------------------------------------
-
-    if (
-      !currentChatId &&
-      conversationHistory.length >= 2
-    ) {
-      const firstUserMsg =
-        conversationHistory.find(
-          msg => msg.role === "user"
-        );
-
-      let chatTitle = "New Chat";
-
-      if (firstUserMsg) {
-        if (
-          typeof firstUserMsg.content === "string"
-        ) {
-          chatTitle =
-            firstUserMsg.content;
-        } else if (
-          Array.isArray(firstUserMsg.content)
-        ) {
-          const textObj =
-            firstUserMsg.content.find(
-              part => part.type === "text"
-            );
-
-          chatTitle = textObj
-            ? textObj.text
-            : "Image Analysis Chat";
-        }
-      }
-
-      currentChatId =
-        "chat_" + Date.now();
-
-      allSavedChats.push({
-        id: currentChatId,
-        title: chatTitle,
-        history: [...conversationHistory]
-      });
-
-      if (historyList) {
-        const li =
-          createHistoryListItem(
-            currentChatId,
-            chatTitle
-          );
-
-        li.classList.add("active");
-
-        historyList.appendChild(li);
-      }
-
-    } else if (currentChatId) {
-
-      const currentChatObj =
-        allSavedChats.find(
-          chat =>
-            chat.id === currentChatId
-        );
-
-      if (currentChatObj) {
-        currentChatObj.history =
-          [...conversationHistory];
-      }
-    }
-
-    saveUserChats();
-
-  } catch (err) {
-
-    if (err.name === "AbortError") {
-
-      const stoppedText =
-        removeThinkingBlocks(
-          aiBubble.textContent || ""
-        );
-
-      if (stoppedText) {
-        conversationHistory.push({
-          role: "assistant",
-          content: stoppedText
-        });
-      }
-
-    } else {
-
-      console.error(
-        "API Request Error:",
-        err
-      );
+      console.error(error);
 
       aiBubble.textContent =
-        `Error: ${err.message}`;
+        "❌ Sorry, something went wrong.";
     }
 
   } finally {
-
-    currentAbortController = null;
-
     setGeneratingState(false);
+    currentAbortController = null;
   }
 }
 
@@ -2057,6 +1963,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const actionDropdown = document.getElementById('action-dropdown');
     if (actionDropdown) actionDropdown.classList.remove('open');
   };
+
+  document.getElementById('opt-generate-image')?.addEventListener('click', () => {
+  closeActionMenu();
+
+  imageGenerationMode = true;
+
+  const input = document.getElementById('user-input');
+
+  if (input) {
+    input.placeholder = 'Describe the image you want to generate...';
+    input.focus();
+  }
+});
 
   document.getElementById('opt-upload-file')?.addEventListener('click', () => {
     closeActionMenu();

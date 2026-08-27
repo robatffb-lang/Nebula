@@ -1964,6 +1964,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (actionDropdown) actionDropdown.classList.remove('open');
   };
 
+  const generateImageButton = document.getElementById("opt-generate-image");
+
+if (generateImageButton) {
+  generateImageButton.addEventListener("click", () => {
+    imageGenerationMode = true;
+
+    userInput.placeholder = "Describe the image you want...";
+
+    // Close the + menu
+    const actionMenu = document.querySelector(".action-menu");
+    if (actionMenu) {
+      actionMenu.classList.remove("show");
+    }
+
+    userInput.focus();
+  });
+}
+
   document.getElementById('opt-generate-image')?.addEventListener('click', () => {
   closeActionMenu();
 

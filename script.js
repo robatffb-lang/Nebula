@@ -524,15 +524,23 @@ function initializeEngine() {
   if (statusDot) statusDot.className = "status-dot ready";
   if (statusText) statusText.textContent = "Engine Ready";
   if (loaderBadge) loaderBadge.style.display = "none";
-  
+
+  // Don't override an active cooldown
+  if (checkCooldownStatus()) return;
+
   if (userInput) {
     userInput.disabled = false;
     userInput.placeholder = "Message Nebula...";
     userInput.focus();
   }
-  
+
+  if (sendBtn) {
+    sendBtn.disabled = !userInput || userInput.value.trim() === "";
+  }
+
   if (welcomeSubtext) {
-    welcomeSubtext.textContent = "Your personal, professional AI assistant.";
+    welcomeSubtext.textContent =
+      "Your personal, professional AI assistant.";
   }
 }
 
@@ -541,8 +549,10 @@ initializeEngine();
 if (userInput) {
   userInput.addEventListener("input", () => {
     userInput.style.height = "auto";
-    userInput.style.height = `${userInput.scrollHeight}px`;
-    if (!currentAbortController) {
+    userInput.style.height =
+      Math.min(userInput.scrollHeight, 180) + "px";
+
+    if (!currentAbortController && !userInput.disabled) {
       sendBtn.disabled = userInput.value.trim() === "";
     }
   });

@@ -1968,67 +1968,105 @@ document.addEventListener('click', (e) => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+// ==========================================================================
+// PLUS ACTION MENU
+// ==========================================================================
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const actionDropdown = document.getElementById("action-dropdown");
+  const actionTrigger = document.getElementById("action-trigger");
+
   const closeActionMenu = () => {
-    const actionDropdown = document.getElementById('action-dropdown');
-    if (actionDropdown) actionDropdown.classList.remove('open');
+    if (actionDropdown) {
+      actionDropdown.classList.remove("open");
+      actionDropdown.classList.remove("show");
+    }
   };
 
-  const generateImageButton = document.getElementById("opt-generate-image");
+  // Open / close +
+  if (actionTrigger) {
+    actionTrigger.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-if (generateImageButton) {
-  generateImageButton.addEventListener("click", () => {
-    imageGenerationMode = true;
+      if (!actionDropdown) return;
 
-    userInput.placeholder = "Describe the image you want...";
-
-    // Close the + menu
-    const actionMenu = document.querySelector(".action-menu");
-    if (actionMenu) {
-      actionMenu.classList.remove("show");
-    }
-
-    userInput.focus();
-  });
-}
-
-  document.getElementById('opt-generate-image')?.addEventListener('click', () => {
-  closeActionMenu();
-
-  imageGenerationMode = true;
-
-  const input = document.getElementById('user-input');
-
-  if (input) {
-    input.placeholder = 'Describe the image you want to generate...';
-    input.focus();
+      actionDropdown.classList.toggle("open");
+      actionDropdown.classList.remove("show");
+    });
   }
-});
 
-  document.getElementById('opt-upload-file')?.addEventListener('click', () => {
-    closeActionMenu();
-    document.getElementById('file-input-document')?.click();
+  // Generate image
+  document
+    .getElementById("opt-generate-image")
+    ?.addEventListener("click", (e) => {
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      imageGenerationMode = true;
+
+      if (userInput) {
+        userInput.placeholder =
+          "Describe the image you want to generate...";
+        userInput.focus();
+      }
+
+      closeActionMenu();
+    });
+
+  // Upload file
+  document
+    .getElementById("opt-upload-file")
+    ?.addEventListener("click", () => {
+      closeActionMenu();
+      document.getElementById("file-input-document")?.click();
+    });
+
+  // Upload photos
+  document
+    .getElementById("opt-upload-photos")
+    ?.addEventListener("click", () => {
+      closeActionMenu();
+      document.getElementById("file-input-photo")?.click();
+    });
+
+  // Upload videos
+  document
+    .getElementById("opt-upload-videos")
+    ?.addEventListener("click", () => {
+      closeActionMenu();
+      document.getElementById("file-input-video")?.click();
+    });
+
+  // Take photo
+  document
+    .getElementById("opt-take-photo")
+    ?.addEventListener("click", () => {
+      closeActionMenu();
+      document.getElementById("camera-input-photo")?.click();
+    });
+
+  // Take video
+  document
+    .getElementById("opt-take-video")
+    ?.addEventListener("click", () => {
+      closeActionMenu();
+      document.getElementById("camera-input-video")?.click();
+    });
+
+  // Click outside
+  document.addEventListener("click", (e) => {
+    if (
+      actionDropdown &&
+      !actionDropdown.contains(e.target) &&
+      !actionTrigger?.contains(e.target)
+    ) {
+      closeActionMenu();
+    }
   });
 
-  document.getElementById('opt-upload-photos')?.addEventListener('click', () => {
-    closeActionMenu();
-    document.getElementById('file-input-photo')?.click();
-  });
-
-  document.getElementById('opt-upload-videos')?.addEventListener('click', () => {
-    closeActionMenu();
-    document.getElementById('file-input-video')?.click();
-  });
-
-  document.getElementById('opt-take-photo')?.addEventListener('click', () => {
-    closeActionMenu();
-    document.getElementById('camera-input-photo')?.click();
-  });
-
-  document.getElementById('opt-take-video')?.addEventListener('click', () => {
-    closeActionMenu();
-    document.getElementById('camera-input-video')?.click();
-  });
 });
 
 // ==========================================================================

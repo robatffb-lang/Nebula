@@ -1635,30 +1635,34 @@ while (true) {
 }
 
 // Flush decoder
+// Flush decoder
 buffer += decoder.decode();
 
 streamFinished = true;
 
-// Make sure typing finishes completely
-if (typingTimer) {
-  clearInterval(typingTimer);
-  typingTimer = null;
-}
+// Wait until the typing animation has displayed
+// the entire response instead of instantly showing it.
+await new Promise((resolve) => {
+  const checkTypingFinished = setInterval(() => {
+    if (displayedText.length >= fullText.length) {
+      clearInterval(checkTypingFinished);
 
-if (displayedText.length < fullText.length) {
-  displayedText = fullText;
-  renderFormattedText(
-    aiBubble,
-    removeThinkingBlocks(displayedText)
-  );
-}
+      if (typingTimer) {
+        clearInterval(typingTimer);
+        typingTimer = null;
+      }
+
+      resolve();
+    }
+  }, 20);
+});
 
 // Save clean final response
-const finalText = removeThinkingBlocks(fullText);
+const cleanedFinalText = removeThinkingBlocks(fullText);
 
 conversationHistory.push({
   role: "assistant",
-  content: finalText
+  content: cleanedFinalText
 });
 
 saveCurrentChat();

@@ -1557,36 +1557,11 @@ const decoder = new TextDecoder();
 
 let buffer = "";
 let fullText = "";
-let displayedText = "";
-let typingTimer = null;
-let streamFinished = false;
 
-// ------------------------------------------------------------
-// TYPE RESPONSE USING TYPING_SPEED_MS
-// ------------------------------------------------------------
-function startTyping() {
-  if (typingTimer) return;
+// ============================================================
+// READ THE COMPLETE SSE RESPONSE FIRST
+// ============================================================
 
-  typingTimer = setInterval(() => {
-    if (displayedText.length < fullText.length) {
-      displayedText += fullText.charAt(displayedText.length);
-
-      const cleanText = removeThinkingBlocks(displayedText);
-
-      renderFormattedText(aiBubble, cleanText);
-
-      messagesList.scrollTop = messagesList.scrollHeight;
-    } 
-    else if (streamFinished) {
-      clearInterval(typingTimer);
-      typingTimer = null;
-    }
-  }, TYPING_SPEED_MS);
-}
-
-// ------------------------------------------------------------
-// READ GROQ SSE STREAM
-// ------------------------------------------------------------
 while (true) {
   const { value, done } = await reader.read();
 
@@ -1606,15 +1581,11 @@ while (true) {
 
     if (!trimmed) continue;
 
-    // Groq SSE format:
-    // data: {"choices":[{"delta":{"content":"Hello"}}]}
     if (!trimmed.startsWith("data:")) continue;
 
     const data = trimmed.slice(5).trim();
 
-    // End of stream
     if (data === "[DONE]") {
-      streamFinished = true;
       continue;
     }
 
@@ -1626,45 +1597,62 @@ while (true) {
 
       if (typeof delta === "string") {
         fullText += delta;
-        startTyping();
       }
 
-    } catch (parseError) {
-      // Ignore incomplete/malformed SSE packets
+    } catch (error) {
       console.debug("SSE parse skipped:", data);
     }
   }
 }
 
-// Flush decoder
-// Flush any remaining decoder data
+// Decode anything left
 buffer += decoder.decode();
 
-streamFinished = true;
 
-// Start typing one last time in case the response
-// was very short or the stream finished quickly.
-startTyping();
+// ============================================================
+// TYPE THE COMPLETE RESPONSE
+// ============================================================
 
-// Wait until every character has been displayed
-while (displayedText.length < fullText.length) {
-  await new Promise(resolve => setTimeout(resolve, 20));
-}
-
-// Make absolutely sure the final text is rendered
 const cleanFinalText = removeThinkingBlocks(fullText);
 
-renderFormattedText(aiBubble, cleanFinalText);
-
-messagesList.scrollTop = messagesList.scrollHeight;
-
-// Stop typing timer
-if (typingTimer) {
-  clearInterval(typingTimer);
-  typingTimer = null;
+if (!cleanFinalText) {
+  throw new Error("AI returned an empty response.");
 }
 
-// Save final response
+aiBubble.innerHTML = "";
+
+let displayedText = "";
+
+for (let i = 0; i < cleanFinalText.length; i++) {
+
+  // If user presses Stop, stop typing
+  if (
+    currentAbortController &&
+    currentAbortController.signal.aborted
+  ) {
+    break;
+  }
+
+  displayedText += cleanFinalText.charAt(i);
+
+  renderFormattedText(
+    aiBubble,
+    displayedText
+  );
+
+  messagesList.scrollTop =
+    messagesList.scrollHeight;
+
+  await new Promise(resolve =>
+    setTimeout(resolve, TYPING_SPEED_MS)
+  );
+}
+
+
+// ============================================================
+// SAVE FINAL RESPONSE
+// ============================================================
+
 finalText = cleanFinalText;
 
 conversationHistory.push({

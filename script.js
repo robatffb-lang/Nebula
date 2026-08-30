@@ -1547,13 +1547,121 @@ async function sendMessage() {
       );
     }
 
-    if (!response.body) {
-      throw new Error("Backend returned an empty response.");
+   if (!response.body) {
+  throw new Error("Backend returned an empty response.");
+}
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+let buffer = "";
+let fullText = "";
+let displayedText = "";
+let typingTimer = null;
+let streamFinished = false;
+
+// ------------------------------------------------------------
+// TYPE RESPONSE USING TYPING_SPEED_MS
+// ------------------------------------------------------------
+function startTyping() {
+  if (typingTimer) return;
+
+  typingTimer = setInterval(() => {
+    if (displayedText.length < fullText.length) {
+      displayedText += fullText.charAt(displayedText.length);
+
+      const cleanText = removeThinkingBlocks(displayedText);
+
+      renderFormattedText(aiBubble, cleanText);
+
+      messagesList.scrollTop = messagesList.scrollHeight;
+    } else if (streamFinished) {
+      clearInterval(typingTimer);
+      typingTimer = null;
+    }
+  }, TYPING_SPEED_MS);
+}
+
+// ------------------------------------------------------------
+// READ GROQ SSE STREAM
+// ------------------------------------------------------------
+while (true) {
+  const { value, done } = await reader.read();
+
+  if (done) break;
+
+  buffer += decoder.decode(value, {
+    stream: true
+  });
+
+  const lines = buffer.split("\n");
+
+  // Keep incomplete line for next chunk
+  buffer = lines.pop() || "";
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed) continue;
+
+    // Groq SSE format:
+    // data: {"choices":[{"delta":{"content":"Hello"}}]}
+    if (!trimmed.startsWith("data:")) continue;
+
+    const data = trimmed.slice(5).trim();
+
+    // End of stream
+    if (data === "[DONE]") {
+      streamFinished = true;
+      continue;
     }
 
-    content: finalText
+    try {
+      const parsed = JSON.parse(data);
 
-    saveCurrentChat();
+      const delta =
+        parsed?.choices?.[0]?.delta?.content;
+
+      if (typeof delta === "string") {
+        fullText += delta;
+        startTyping();
+      }
+
+    } catch (parseError) {
+      // Ignore incomplete/malformed SSE packets
+      console.debug("SSE parse skipped:", data);
+    }
+  }
+}
+
+// Flush decoder
+buffer += decoder.decode();
+
+streamFinished = true;
+
+// Make sure typing finishes completely
+if (typingTimer) {
+  clearInterval(typingTimer);
+  typingTimer = null;
+}
+
+if (displayedText.length < fullText.length) {
+  displayedText = fullText;
+  renderFormattedText(
+    aiBubble,
+    removeThinkingBlocks(displayedText)
+  );
+}
+
+// Save clean final response
+const finalText = removeThinkingBlocks(fullText);
+
+conversationHistory.push({
+  role: "assistant",
+  content: finalText
+});
+
+saveCurrentChat();
 
   } catch (error) {
 

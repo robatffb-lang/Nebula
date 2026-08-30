@@ -1569,14 +1569,22 @@ function startTyping() {
 
   typingTimer = setInterval(() => {
     if (displayedText.length < fullText.length) {
-      displayedText += fullText.charAt(displayedText.length);
+      const charsToAdd = Math.max(
+        1,
+        Math.ceil(1 / (TYPING_SPEED_MS / 35))
+      );
+
+      displayedText += fullText.slice(
+        displayedText.length,
+        displayedText.length + charsToAdd
+      );
 
       const cleanText = removeThinkingBlocks(displayedText);
 
       renderFormattedText(aiBubble, cleanText);
 
       messagesList.scrollTop = messagesList.scrollHeight;
-    } else if (streamFinished) {
+    } else {
       clearInterval(typingTimer);
       typingTimer = null;
     }
@@ -1641,25 +1649,20 @@ buffer += decoder.decode();
 
 streamFinished = true;
 
-// Wait until the typing animation has displayed
-// the entire response instead of instantly showing it.
-await new Promise((resolve) => {
-  const checkTypingFinished = setInterval(() => {
-    if (displayedText.length >= fullText.length) {
-      clearInterval(checkTypingFinished);
+// Wait until the typing animation catches up
+while (displayedText.length < fullText.length) {
+  await new Promise(resolve => setTimeout(resolve, 20));
+}
 
-      if (typingTimer) {
-        clearInterval(typingTimer);
-        typingTimer = null;
-      }
+// Final render
+displayedText = fullText;
 
-      resolve();
-    }
-  }, 20);
-});
+const cleanFinalText = removeThinkingBlocks(displayedText);
 
-// Save clean final response
-finalText = removeThinkingBlocks(fullText);
+renderFormattedText(aiBubble, cleanFinalText);
+
+// Save response
+finalText = cleanFinalText;
 
 conversationHistory.push({
   role: "assistant",
@@ -1668,6 +1671,11 @@ conversationHistory.push({
 
 saveCurrentChat();
 
+if (typingTimer) {
+  clearInterval(typingTimer);
+  typingTimer = null;
+}
+    
   } catch (error) {
 
     if (error.name === "AbortError") {

@@ -1290,6 +1290,7 @@ function saveCurrentChat() {
 // CHAT MESSAGING LOGIC
 // ----------------------------------------------------
 async function sendMessage() {
+  let finalText = "";
   const prompt = userInput.value.trim();
 
   if (!prompt && attachedFiles.length === 0) return;
@@ -1658,11 +1659,11 @@ await new Promise((resolve) => {
 });
 
 // Save clean final response
-const cleanedFinalText = removeThinkingBlocks(fullText);
+finalText = removeThinkingBlocks(fullText);
 
 conversationHistory.push({
   role: "assistant",
-  content: cleanedFinalText
+  content: finalText
 });
 
 saveCurrentChat();

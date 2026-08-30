@@ -1569,22 +1569,15 @@ function startTyping() {
 
   typingTimer = setInterval(() => {
     if (displayedText.length < fullText.length) {
-      const charsToAdd = Math.max(
-        1,
-        Math.ceil(1 / (TYPING_SPEED_MS / 35))
-      );
-
-      displayedText += fullText.slice(
-        displayedText.length,
-        displayedText.length + charsToAdd
-      );
+      displayedText += fullText.charAt(displayedText.length);
 
       const cleanText = removeThinkingBlocks(displayedText);
 
       renderFormattedText(aiBubble, cleanText);
 
       messagesList.scrollTop = messagesList.scrollHeight;
-    } else {
+    } 
+    else if (streamFinished) {
       clearInterval(typingTimer);
       typingTimer = null;
     }
@@ -1644,24 +1637,34 @@ while (true) {
 }
 
 // Flush decoder
-// Flush decoder
+// Flush any remaining decoder data
 buffer += decoder.decode();
 
 streamFinished = true;
 
-// Wait until the typing animation catches up
+// Start typing one last time in case the response
+// was very short or the stream finished quickly.
+startTyping();
+
+// Wait until every character has been displayed
 while (displayedText.length < fullText.length) {
   await new Promise(resolve => setTimeout(resolve, 20));
 }
 
-// Final render
-displayedText = fullText;
-
-const cleanFinalText = removeThinkingBlocks(displayedText);
+// Make absolutely sure the final text is rendered
+const cleanFinalText = removeThinkingBlocks(fullText);
 
 renderFormattedText(aiBubble, cleanFinalText);
 
-// Save response
+messagesList.scrollTop = messagesList.scrollHeight;
+
+// Stop typing timer
+if (typingTimer) {
+  clearInterval(typingTimer);
+  typingTimer = null;
+}
+
+// Save final response
 finalText = cleanFinalText;
 
 conversationHistory.push({
@@ -1670,7 +1673,7 @@ conversationHistory.push({
 });
 
 saveCurrentChat();
-
+    
 if (typingTimer) {
   clearInterval(typingTimer);
   typingTimer = null;

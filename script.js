@@ -1615,57 +1615,216 @@ buffer += decoder.decode();
 
 const cleanFinalText = removeThinkingBlocks(fullText);
 
-if (!cleanFinalText) {
-  throw new Error("AI returned an empty response.");
+// ==========================================================
+// HANDLE AI RESPONSE
+// Supports both JSON and SSE streaming responses
+// ==========================================================
+
+if (!response.body) {
+  throw new Error("Backend returned an empty response.");
 }
 
-aiBubble.innerHTML = "";
+const contentType = response.headers.get("content-type") || "";
 
+let fullText = "";
 let displayedText = "";
+let typingTimer = null;
+let streamFinished = false;
 
-for (let i = 0; i < cleanFinalText.length; i++) {
+// ----------------------------------------------------------
+// TYPING EFFECT
+// ----------------------------------------------------------
 
-  // If user presses Stop, stop typing
-  if (
-    currentAbortController &&
-    currentAbortController.signal.aborted
-  ) {
-    break;
+function startTyping() {
+  if (typingTimer) return;
+
+  typingTimer = setInterval(() => {
+    if (displayedText.length < fullText.length) {
+
+      displayedText += fullText.charAt(displayedText.length);
+
+      const cleanText = removeThinkingBlocks(displayedText);
+
+      renderFormattedText(aiBubble, cleanText);
+
+      messagesList.scrollTop = messagesList.scrollHeight;
+
+    } else if (streamFinished) {
+
+      clearInterval(typingTimer);
+      typingTimer = null;
+
+    }
+  }, TYPING_SPEED_MS);
+}
+
+// ----------------------------------------------------------
+// JSON RESPONSE
+// ----------------------------------------------------------
+
+if (contentType.includes("application/json")) {
+
+  const data = await response.json();
+
+  console.log("Backend JSON response:", data);
+
+  fullText =
+    data.text ||
+    data.response ||
+    data.content ||
+    data.message ||
+    data.choices?.[0]?.message?.content ||
+    data.choices?.[0]?.text ||
+    "";
+
+  if (!fullText) {
+    console.error("Backend returned JSON but no AI text:", data);
+    throw new Error("AI returned an empty response.");
   }
 
-  displayedText += cleanFinalText.charAt(i);
+  startTyping();
 
-  renderFormattedText(
-    aiBubble,
-    displayedText
-  );
+  // Wait for typing animation to finish
+  await new Promise(resolve => {
+    const checkTyping = setInterval(() => {
 
-  messagesList.scrollTop =
-    messagesList.scrollHeight;
+      if (displayedText.length >= fullText.length) {
+        clearInterval(checkTyping);
+        resolve();
+      }
 
-  await new Promise(resolve =>
-    setTimeout(resolve, TYPING_SPEED_MS)
-  );
+    }, 20);
+  });
+
+  streamFinished = true;
+
 }
 
+// ----------------------------------------------------------
+// SSE STREAM RESPONSE
+// ----------------------------------------------------------
 
-// ============================================================
-// SAVE FINAL RESPONSE
-// ============================================================
+else {
 
-finalText = cleanFinalText;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
 
+  let buffer = "";
+
+  while (true) {
+
+    const { value, done } = await reader.read();
+
+    if (done) break;
+
+    buffer += decoder.decode(value, {
+      stream: true
+    });
+
+    const lines = buffer.split("\n");
+
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+
+      const trimmed = line.trim();
+
+      if (!trimmed) continue;
+
+      if (!trimmed.startsWith("data:")) continue;
+
+      const data = trimmed.slice(5).trim();
+
+      if (data === "[DONE]") {
+        streamFinished = true;
+        continue;
+      }
+
+      try {
+
+        const parsed = JSON.parse(data);
+
+        console.log("SSE chunk:", parsed);
+
+        const delta =
+          parsed?.choices?.[0]?.delta?.content ||
+          parsed?.choices?.[0]?.message?.content ||
+          parsed?.content ||
+          parsed?.text ||
+          "";
+
+        if (typeof delta === "string" && delta.length > 0) {
+
+          fullText += delta;
+
+          startTyping();
+
+        }
+
+      } catch (parseError) {
+
+        console.debug(
+          "Skipping invalid SSE data:",
+          data
+        );
+
+      }
+
+    }
+
+  }
+
+  buffer += decoder.decode();
+
+  streamFinished = true;
+
+  // Make sure all text gets displayed
+  await new Promise(resolve => {
+
+    const checkTyping = setInterval(() => {
+
+      if (displayedText.length >= fullText.length) {
+
+        clearInterval(checkTyping);
+        resolve();
+
+      }
+
+    }, 20);
+
+  });
+
+}
+
+// ----------------------------------------------------------
+// FINAL RESPONSE CHECK
+// ----------------------------------------------------------
+
+if (!fullText.trim()) {
+
+  console.error(
+    "AI returned an empty response. Content-Type:",
+    contentType
+  );
+
+  throw new Error("AI returned an empty response.");
+
+}
+
+// Make absolutely sure the complete response is visible
+const finalText = removeThinkingBlocks(fullText);
+
+renderFormattedText(aiBubble, finalText);
+
+// Save response
 conversationHistory.push({
   role: "assistant",
   content: finalText
 });
 
 saveCurrentChat();
-    
-if (typingTimer) {
-  clearInterval(typingTimer);
-  typingTimer = null;
-}
+
+messagesList.scrollTop = messagesList.scrollHeight;
     
   } catch (error) {
 
